@@ -4,9 +4,10 @@ from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
 
-menu = [{'title': "О сайте", 'url_name': 'about'},
-        {'title': "Обратная связь", 'url_name': 'contact'},
-        {'title': "Войти", 'url_name': 'login'}
+nav = [
+    {'title': "О сайте", 'url_name': 'about'},
+    {'title': "Обратная связь", 'url_name': 'contact'},
+    {'title': "Войти", 'url_name': 'login'}
 ]
 
 data_item = [
@@ -16,22 +17,37 @@ data_item = [
     {'id': 3, 'title': 'Пуфик красный', 'content': 'Пуфик красный', 'is_published': True},
 ]
 
+menu = [
+    {'id': 1, 'name': "Просмотр товара"},
+    {'id': 2, 'name': "Редактирование товара"},
+    {'id': 3, 'name': "Добавление товара"},
+]
 
 def index(request):
     data = {
         'title': 'Главная страница',
-        'menu': menu,
+        'nav': nav,
         'data_item': data_item,
+        'menu_selected': 0,
     }
     return render(request, 'main/index.html', context=data)
 
 
 def about(request):
-    return render(request, 'main/about.html', {'title': 'О сайте', 'menu': menu})
+    return render(request, 'main/about.html', {'title': 'О сайте', 'nav': nav})
 
 
 def show_item(request, item_id):
     return HttpResponse(f"Отображение статьи с id = {item_id}")
+
+def show_menu(request, menu_id):
+    data = {
+        'title': 'Главная страница',
+        'nav': nav,
+        'data_item': data_item,
+        'menu_selected': menu_id,
+    }
+    return render(request, 'main/index.html', context=data)
 
 
 def addpage(request):
