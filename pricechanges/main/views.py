@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
-from main.models import Items
+from .models import Items
 
 nav = [
     {'title': "О сайте", 'url_name': 'about'},
@@ -25,6 +25,7 @@ menu = [
 ]
 
 def index(request):
+    data_item = Items.objects.all()
     data = {
         'title': 'Главная страница',
         'nav': nav,
@@ -38,8 +39,8 @@ def about(request):
     return render(request, 'main/about.html', {'title': 'О сайте', 'nav': nav})
 
 
-def show_item(request, item_id):
-    item = get_object_or_404(Items, pk=item_id)
+def show_item(request, item_slug):
+    item = get_object_or_404(Items, slug=item_slug)
     data = {
         'title': item.name,
         'nav': nav,
