@@ -3,7 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
-from .models import Items
+from .models import Items, Marketplace
 
 nav = [
     {'title': "О сайте", 'url_name': 'about'},
@@ -50,12 +50,15 @@ def show_item(request, item_slug):
     }
     return render(request, 'main/item.html', context=data)
 
-def show_menu(request, menu_id):
+def show_menu(request, mtplace_slug):
+    marketplace = get_object_or_404(Marketplace, slug=mtplace_slug)
+    items_mtplace = Items.actual.filter(mtplace_id=marketplace.pk)
+
     data = {
-        'title': 'Главная страница',
+        'title': f'Маркетплейс: {marketplace.name}',
         'nav': nav,
-        'data_item': data_item,
-        'menu_selected': menu_id,
+        'data_item': items_mtplace,
+        'menu_selected': marketplace.pk,
     }
     return render(request, 'main/index.html', context=data)
 

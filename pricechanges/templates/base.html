@@ -32,9 +32,9 @@
 	<td valign="top" class="left-chapters">
 	<ul id="leftchapters">
 		{% if menu_selected == 0 or menu_selected is None %}
-		<li class="selected">Все категории<li>
+		<li class="selected">Все маркетплейсы<li>
 		{% else %}
-		<li><a href="{% url 'home' %}">Все категории</a></li>
+		<li><a href="{% url 'home' %}">Все маркетплейсы</a></li>
 		{% endif %}
 		{% show_menu menu_selected %}
 		<li class="share">
