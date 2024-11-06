@@ -1,6 +1,21 @@
 {% extends 'base.html' %}
 
+{% block breadcrumbs %}
+<!-- Теги -->
+{% with item.tags.all as tags %}
+{% if tags %}
+<ul class="tags-list">
+    <li>Теги:</li>
+    {% for t in tags %}
+    <li><a href="{{t.get_absolute_url}}">{{t.tag}}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% endwith %}
+{% endblock %}
+
 {% block content %}
 <h1>{{title}}</h1>
-{{ item.brand }}
+<p>{{ item.brand }}</p>
+<i>{{ item.content }}</i>
 {% endblock %}

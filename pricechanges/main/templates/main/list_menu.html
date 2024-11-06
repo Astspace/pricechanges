@@ -1,7 +1,7 @@
 {% for m in menu %}
-{% if m.id == menu_select %}
+{% if m.pk == menu_select %}
 <li class="selected">{{m.name}}</li>
 {% else %}
-<li><a href="{% url 'menu' m.id %}">{{ m.name }}</a></li>
+<li><a href="{% url 'marketplace' m.slug %}">{{ m.name }}</a></li>
 {% endif %}
 {% endfor %}

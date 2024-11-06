@@ -1,0 +1,10 @@
+<div class="header">
+    <ul id="mainmenu" class="mainmenu">
+        <li class="logo"><a href="{% url 'home' %}"><div class="logo"></div></a></li>
+{% for m in nav %}
+	{% if not forloop.last %}<li>{% else %}<li class="last">{% endif %}
+		<a href="{% url m.url_name %}">{{m.title}}</a></li>
+{% endfor %}
+    </ul>
+    <div class="clear"></div>
+		</div>

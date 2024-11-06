@@ -2,13 +2,17 @@
 
 {% block content %}
 <ul class="list-articles">
-	{% for p in data_item %}
-		<li><h2>{{p.name}}</h2>
+	{% for i in data_item %}
+		<li><div class="article-panel">
+	<p class="first">Маркетплейс: {{i.mtplace.name}}</p>
+	<p class="last">Бренд: {{i.brand}}</p>
+    </div>
+			<h2>{{i.name}}</h2>
     {% autoescape off %}
-	{{p.content|linebreaks|truncatewords:40}}
+	{{i.content|linebreaks|truncatewords:40}}
     {% endautoescape %}
 		<div class="clear"></div>
-		<p class="link-read-post"><a href="{{ p.get_absolute_url }}">Смотреть товар</a></p>
+		<p class="link-read-post"><a href="{{ i.get_absolute_url }}">Смотреть товар</a></p>
 		</li>
 	{% endfor %}
 </ul>

@@ -10,9 +10,11 @@ class ActualItemsManager(models.Manager):
 class Items(models.Model):
     id_item = models.IntegerField(blank=True)
     name = models.CharField(max_length=255)
+    content = models.CharField(max_length=255, blank=True)
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
     brand = models.CharField(max_length=255)
     mtplace = models.ForeignKey('Marketplace', on_delete=models.PROTECT, related_name='items')
+    tags = models.ManyToManyField('TagItem', blank=True, related_name='items')
 
     objects = models.Manager()
     actual = ActualItemsManager()
@@ -41,3 +43,13 @@ class Marketplace(models.Model):
         indexes = [
             models.Index(fields=['-id'])
         ]
+
+class TagItem(models.Model):
+    tag = models.CharField(max_length=100, db_index=True)
+    slug = models.SlugField(max_length=255, unique=True, db_index=True)
+
+    def __str__(self):
+        return self.tag
+
+    def get_absolute_url(self):
+        return reverse('tag', kwargs={'tag_slug': self.slug})

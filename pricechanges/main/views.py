@@ -3,13 +3,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
-from .models import Items, Marketplace
+from .models import Items, Marketplace, TagItem
 
-nav = [
-    {'title': "О сайте", 'url_name': 'about'},
-    {'title': "Обратная связь", 'url_name': 'contact'},
-    {'title': "Войти", 'url_name': 'login'}
-]
 
 data_item = [
     {'id': 1, 'title': 'Рубашка', 'content': '''<h1>Рубашка белая</h1>''',
@@ -28,7 +23,6 @@ def index(request):
     data_item = Items.objects.all()
     data = {
         'title': 'Главная страница',
-        'nav': nav,
         'data_item': data_item,
         'menu_selected': 0,
     }
@@ -36,15 +30,13 @@ def index(request):
 
 
 def about(request):
-    return render(request, 'main/about.html', {'title': 'О сайте', 'nav': nav})
+    return render(request, 'main/about.html', {'title': 'О сайте'})
 
 
 def show_item(request, item_slug):
     item = get_object_or_404(Items, slug=item_slug)
     data = {
         'title': item.name,
-        'nav': nav,
-        'menu': menu,
         'item': item,
         'menu_selected': 1,
     }
@@ -53,12 +45,23 @@ def show_item(request, item_slug):
 def show_menu(request, mtplace_slug):
     marketplace = get_object_or_404(Marketplace, slug=mtplace_slug)
     items_mtplace = Items.actual.filter(mtplace_id=marketplace.pk)
+    print(items_mtplace)
 
     data = {
         'title': f'Маркетплейс: {marketplace.name}',
-        'nav': nav,
         'data_item': items_mtplace,
         'menu_selected': marketplace.pk,
+    }
+    return render(request, 'main/index.html', context=data)
+
+def show_tag_items(request, tag_slug):
+    tag = get_object_or_404(TagItem, slug=tag_slug)
+    items_tag = tag.items.all()
+
+    data = {
+        'title': f'Товары по тегу: {tag.tag}',
+        'data_item': items_tag,
+        'menu_selected': None,
     }
     return render(request, 'main/index.html', context=data)
 
