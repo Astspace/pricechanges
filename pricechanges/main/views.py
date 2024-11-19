@@ -3,6 +3,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
+from .forms import AddItemForm
 from .models import Items, Marketplace, TagItem
 
 
@@ -20,7 +21,7 @@ menu = [
 ]
 
 def index(request):
-    data_item = Items.objects.all()
+    data_item = Items.objects.all().select_related('mtplace')
     data = {
         'title': 'Главная страница',
         'data_item': data_item,
@@ -44,7 +45,7 @@ def show_item(request, item_slug):
 
 def show_menu(request, mtplace_slug):
     marketplace = get_object_or_404(Marketplace, slug=mtplace_slug)
-    items_mtplace = Items.actual.filter(mtplace_id=marketplace.pk)
+    items_mtplace = Items.actual.filter(mtplace_id=marketplace.pk).select_related('mtplace')
     print(items_mtplace)
 
     data = {
@@ -56,7 +57,7 @@ def show_menu(request, mtplace_slug):
 
 def show_tag_items(request, tag_slug):
     tag = get_object_or_404(TagItem, slug=tag_slug)
-    items_tag = tag.items.all()
+    items_tag = tag.items.all().select_related('mtplace')
 
     data = {
         'title': f'Товары по тегу: {tag.tag}',
@@ -66,8 +67,20 @@ def show_tag_items(request, tag_slug):
     return render(request, 'main/index.html', context=data)
 
 
-def addpage(request):
-    return HttpResponse("Добавление статьи")
+def add_item(request):
+    if request.method == 'POST':
+        form = AddItemForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('home')
+    else:
+        form = AddItemForm()
+
+    data = {
+        'title': 'Добавление товара с маркетплейса',
+        'form': form
+    }
+    return render(request, 'main/add_item.html', data)
 
 
 def contact(request):
