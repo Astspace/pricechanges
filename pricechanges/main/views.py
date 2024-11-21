@@ -3,6 +3,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
+from django.views.generic import TemplateView, ListView, DetailView
+
 from .forms import AddItemForm
 from .models import Items, Marketplace, TagItem
 
@@ -20,15 +22,17 @@ menu = [
     {'id': 3, 'name': "Добавление товара"},
 ]
 
-def index(request):
-    data_item = Items.objects.all().select_related('mtplace')
-    data = {
+class HomeItems(ListView):
+    model = Items
+    template_name = 'main/index.html'
+    context_object_name = 'data_item'
+    extra_context = {
         'title': 'Главная страница',
-        'data_item': data_item,
         'menu_selected': 0,
     }
-    return render(request, 'main/index.html', context=data)
 
+    def get_queryset(self):
+        return Items.actual.all().select_related('mtplace')
 
 def about(request):
     return render(request, 'main/about.html', {'title': 'О сайте'})
@@ -39,9 +43,17 @@ def show_item(request, item_slug):
     data = {
         'title': item.name,
         'item': item,
-        'menu_selected': 1,
+        'menu_selected': 0,
     }
     return render(request, 'main/item.html', context=data)
+
+class ShowItem(DetailView):
+    model = Items
+    template_name = 'main/item.html'
+    slug_url_kwarg = 'item_slug'
+    context_object_name = 'item'
+    '''ДОДЕЛАТЬ'''
+
 
 def show_menu(request, mtplace_slug):
     marketplace = get_object_or_404(Marketplace, slug=mtplace_slug)

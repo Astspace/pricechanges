@@ -18,7 +18,7 @@ class ActualItemsManager(models.Manager):
 
 
 class Items(models.Model):
-    id_item = models.IntegerField(blank=True, verbose_name='ID')
+    id_item = models.IntegerField(blank=True, null=True, verbose_name='ID')
     name = models.CharField(max_length=255, verbose_name='Наиванование')
     content = models.CharField(max_length=255, blank=True, verbose_name='Описание')
     slug = models.SlugField(max_length=255, unique=True, db_index=True)
