@@ -12,7 +12,8 @@
 	{{i.content|linebreaks|truncatewords:40}}
     {% endautoescape %}
 		<div class="clear"></div>
-		<p class="link-read-post"><a href="{{ i.get_absolute_url }}">Смотреть товар</a></p>
+		<p class="link-read-post"><a href="{{ i.get_absolute_url }}">Смотреть товар</a>
+			<a href="{% url 'update_item' i.pk %}">Редактировать товар</a></p>
 		</li>
 	{% endfor %}
 </ul>

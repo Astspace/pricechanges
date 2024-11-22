@@ -1,64 +1,48 @@
 from django.http import HttpResponse, HttpResponseNotFound, Http404, HttpResponseRedirect, HttpResponsePermanentRedirect
 from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse
+from django.urls import reverse, reverse_lazy
 from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
-from django.views.generic import TemplateView, ListView, DetailView
+from django.views.generic import TemplateView, ListView, DetailView, FormView, CreateView, UpdateView
 
 from .forms import AddItemForm
 from .models import Items, Marketplace, TagItem
+from .utils import DataMixin
 
 
-data_item = [
-    {'id': 1, 'title': 'Рубашка', 'content': '''<h1>Рубашка белая</h1>''',
-     'is_published': True},
-    {'id': 2, 'title': 'Носки черные', 'content': 'Носки черные', 'is_published': True},
-    {'id': 3, 'title': 'Пуфик красный', 'content': 'Пуфик красный', 'is_published': True},
-]
-
-menu = [
-    {'id': 1, 'name': "Просмотр товара"},
-    {'id': 2, 'name': "Редактирование товара"},
-    {'id': 3, 'name': "Добавление товара"},
-]
-
-class HomeItems(ListView):
-    model = Items
+class HomeItems(DataMixin, ListView):
     template_name = 'main/index.html'
     context_object_name = 'data_item'
-    extra_context = {
-        'title': 'Главная страница',
-        'menu_selected': 0,
-    }
+    title = 'Главная страница'
+    menu_selected = 0
 
     def get_queryset(self):
         return Items.actual.all().select_related('mtplace')
 
+
+class About(DataMixin, TemplateView):
+    template_name = 'main/about.html'
+    title = 'О сайте'
 def about(request):
     return render(request, 'main/about.html', {'title': 'О сайте'})
 
 
-def show_item(request, item_slug):
-    item = get_object_or_404(Items, slug=item_slug)
-    data = {
-        'title': item.name,
-        'item': item,
-        'menu_selected': 0,
-    }
-    return render(request, 'main/item.html', context=data)
-
-class ShowItem(DetailView):
-    model = Items
+class ShowItem(DataMixin, DetailView):
     template_name = 'main/item.html'
     slug_url_kwarg = 'item_slug'
     context_object_name = 'item'
-    '''ДОДЕЛАТЬ'''
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return self.get_mixin_context(context, title=context['item'].name)
+
+    def get_object(self, queryset=None):
+        return get_object_or_404(Items.actual, slug=self.kwargs[self.slug_url_kwarg])
 
 
 def show_menu(request, mtplace_slug):
     marketplace = get_object_or_404(Marketplace, slug=mtplace_slug)
     items_mtplace = Items.actual.filter(mtplace_id=marketplace.pk).select_related('mtplace')
-    print(items_mtplace)
 
     data = {
         'title': f'Маркетплейс: {marketplace.name}',
@@ -77,6 +61,21 @@ def show_tag_items(request, tag_slug):
         'menu_selected': None,
     }
     return render(request, 'main/index.html', context=data)
+
+class AddItem(DataMixin, CreateView):
+    form_class = AddItemForm
+    template_name = 'main/add_item.html'
+    title = 'Добавление товара с маркетплейса'
+
+class UpdateItem(DataMixin, UpdateView):
+    model = Items
+    fields = ['id_item', 'name', 'content', 'brand', 'mtplace', 'tags']
+    template_name = 'main/add_item.html'
+    success_url = reverse_lazy('home')
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        return self.get_mixin_context(context, title=f'Редактирование товара "{context['items'].name}"')
 
 
 def add_item(request):

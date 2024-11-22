@@ -8,5 +8,3 @@ class AddItemForm(forms.ModelForm):
     class Meta:
         model = Items
         fields = ['id_item', 'name', 'content', 'brand', 'mtplace', 'tags']
-
-        """Пофиксить дубликаты запросов!"""
