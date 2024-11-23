@@ -10,6 +10,6 @@ urlpatterns = [
     path('contact/', views.contact, name='contact'),
     path('login/', views.login, name='login'),
     path('items/<slug:item_slug>/', views.ShowItem.as_view(), name='item'),
-    path('marketplace/<slug:mtplace_slug>/', views.show_menu, name='marketplace'),
-    path('tag/<slug:tag_slug>/', views.show_tag_items, name='tag'),
+    path('marketplace/<slug:mtplace_slug>/', views.ShowMenu.as_view(), name='marketplace'),
+    path('tag/<slug:tag_slug>/', views.ShowTagItems.as_view(), name='tag'),
 ]

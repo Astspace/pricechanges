@@ -16,13 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
-from main import views
 from main.views import page_not_found
 from debug_toolbar.toolbar import debug_toolbar_urls
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('main.urls')),
+    path('users/', include('users.urls', namespace='users')),
 ] + debug_toolbar_urls()
 
 

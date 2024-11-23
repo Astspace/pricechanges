@@ -4,7 +4,7 @@ from main.models import Marketplace, TagItem
 register = template.Library()
 
 @register.inclusion_tag('main/list_menu.html')
-def show_menu(menu_select=0):
+def show_menu(menu_select=None):
     menu = Marketplace.objects.all()
     return {'menu': menu, 'menu_select': menu_select}
 
