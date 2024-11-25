@@ -1,3 +1,4 @@
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseNotFound
 from django.shortcuts import render, get_object_or_404
 from django.urls import reverse_lazy
@@ -57,10 +58,16 @@ class ShowTagItems(DataMixin, ListView):
         return Items.actual.filter(tags__slug=self.kwargs['tag_slug']).select_related('mtplace')
 
 
-class AddItem(DataMixin, CreateView):
+class AddItem(LoginRequiredMixin, DataMixin, CreateView):
     form_class = AddItemForm
     template_name = 'main/add_item.html'
     title = 'Добавление товара с маркетплейса'
+
+    def form_valid(self, form):
+        w = form.save(commit=False)
+        print(w.content)
+        w.owner = self.request.user
+        return super().form_valid(form)
 
 
 class UpdateItem(DataMixin, UpdateView):

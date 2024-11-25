@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.urls import reverse
@@ -18,6 +19,7 @@ class ActualItemsManager(models.Manager):
 
 
 class Items(models.Model):
+    owner = models.ForeignKey(get_user_model(), on_delete=models.SET_NULL, related_name='items', null=True, default=None)
     id_item = models.IntegerField(blank=True, null=True, verbose_name='ID')
     name = models.CharField(max_length=255, verbose_name='Наиванование')
     content = models.CharField(max_length=255, blank=True, verbose_name='Описание')
