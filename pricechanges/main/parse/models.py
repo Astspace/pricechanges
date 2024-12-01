@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 
+
 class Item(BaseModel):
     id: int
     brand: str

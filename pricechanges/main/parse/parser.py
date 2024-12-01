@@ -70,26 +70,43 @@ class ItemParserOzon(ItemParserBase):
         pretty_soup_item_page = soup_item_page.prettify()
         return pretty_soup_item_page
 
-    def __get_item_dict(self, item_page_soup, id_item):
+    def __get_item_brand(self, item_page_soup: BeautifulSoup) -> str:
+        brand = item_page_soup.find('div', {'data-widget': 'breadCrumbs'}) \
+                              .find_all('span')[-1] \
+                              .text.strip()
+        return brand
+
+    def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: str) -> dict:
+        volume = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
+                               .find_next('span') \
+                               .find_next('span') \
+                               .text.strip()
+
+        price = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
+                              .find_next('div', {'data-widget': 'webPrice'}) \
+                              .find('span') \
+                              .text.strip().replace(u'\u2009', '')[:-1]
+
+        if len(volume.split()) > 1:
+            volume = 'данные отсутствуют на ozon'
+        else:
+            volume = int(volume)
         item_data_dict = {
             "id": id_item,
-            "brand": item_page_soup.find('div', {'data-widget': 'breadCrumbs'})
-                                   .find_all('span')[-1]
-                                   .text.strip(),
+            "brand": self.__get_item_brand(item_page_soup),
             "name": item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1]
-                                  .find('h1')
-                                  .text.strip(),
-            "rating": float(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1]
-                                          .find('svg')
-                                          .find_next('div')
-                                          .text.strip()[:3]),
-            "feedbacks": int(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1]
-                                           .find('svg')
-                                           .find_next('div')
-                                           .text.strip()[6:]
-                                           .split()[0]),
-            "volume": None,
-            "price": None,
+            .find('h1')
+            .text.strip(),
+            "rating": float(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1]\
+                            .find('svg')\
+                            .find_next('div')\
+                            .text.split()[0]),
+            "feedbacks": int(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1]\
+                             .find('svg')\
+                             .find_next('div')\
+                             .text.split()[2]),
+            "volume": volume,
+            "price": price,
         }
         return item_data_dict
 
@@ -102,11 +119,8 @@ class ItemParserOzon(ItemParserBase):
         item_dict = self.__get_item_dict(item_page_soup, id_item)
         print(item_dict)
 
-        # test = soup_item_page.find('div', {'data-widget': 'webPrice'}).find('span').text.strip()
-        # print(pretty_soup_item_page.find('div', {'data-widget': 'webPrice'}))
-
 
 if __name__ == "__main__":
     x = ItemParserOzon()
-    x.parse("1690791181")
+    x.parse("234205944")
     # x.parse('273612215')
