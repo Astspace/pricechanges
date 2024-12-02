@@ -1,10 +1,10 @@
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse, HttpResponseNotFound
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView
 from .forms import AddItemForm
-from .models import Items, Marketplace, TagItem
+from .models import Items, Marketplace
 from .utils import DataMixin
 
 
@@ -65,14 +65,13 @@ class AddItem(LoginRequiredMixin, DataMixin, CreateView):
 
     def form_valid(self, form):
         w = form.save(commit=False)
-        print(w.content)
         w.owner = self.request.user
         return super().form_valid(form)
 
 
 class UpdateItem(DataMixin, UpdateView):
     model = Items
-    fields = ['id_item', 'name', 'content', 'brand', 'mtplace', 'tags']
+    fields = ['id_item', 'name', 'brand', 'mtplace', 'tags']
     template_name = 'main/add_item.html'
     success_url = reverse_lazy('home')
 

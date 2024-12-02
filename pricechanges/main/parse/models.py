@@ -1,7 +1,9 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, Field, model_validator
+from typing import Self
 
 
 class Item(BaseModel):
+    marketplace: str
     id: int
     brand: str
     name: str
@@ -10,7 +12,9 @@ class Item(BaseModel):
     volume: int
     price: int
 
-    @field_validator("price")
-    def convert_price(cls, price: int) -> float:
-        if price is not None:
-            return price / 100
+    @model_validator(mode='after')
+    def convert_price(self) -> Self:
+        if self.price is not None and self.marketplace == 'wb':
+            self.price = int(self.price / 100)
+            return self
+        return self
