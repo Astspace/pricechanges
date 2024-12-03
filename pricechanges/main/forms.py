@@ -7,4 +7,4 @@ class AddItemForm(forms.ModelForm):
 
     class Meta:
         model = Items
-        fields = ['id_item', 'name', 'brand', 'mtplace', 'tags']
+        fields = ['mtplace', 'id_item', 'name_for_user', 'tags']

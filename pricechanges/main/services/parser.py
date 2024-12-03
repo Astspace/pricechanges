@@ -1,5 +1,4 @@
 import requests
-from models import Item
 from selenium import webdriver
 from selenium_stealth import stealth
 from selenium.webdriver.common.by import By
@@ -7,19 +6,23 @@ from selenium.webdriver.common.keys import Keys
 import time
 from bs4 import BeautifulSoup
 import os.path
+from models import Item
 
 
 class ItemParserBase:
+    def __init__(self, id_item: int):
+        self.id_item = id_item
+
     def _create_item_obj(self, item_data_dict: dict) -> Item:
         item_obj = Item.model_validate(item_data_dict)
         return item_obj
 
 
 class ItemParserWb(ItemParserBase):
-    def parse(self, id_item: str) -> Item:
+    def parse(self) -> Item:
         params = {
             'dest': '-1257786',
-            'nm': id_item,
+            'nm': self.id_item,
         }
         response = requests.get('https://card.wb.ru/cards/v2/detail', params=params)
         return self.__get_item_dict(response.json()["data"]["products"][0])
@@ -51,21 +54,21 @@ class ItemParserOzon(ItemParserBase):
                 )
         return driver
 
-    def __search_item(self, driver: webdriver.Chrome, id_item: str) -> webdriver.Chrome:
+    def __search_item(self, driver: webdriver.Chrome, id_item: int) -> webdriver.Chrome:
         search_field = driver.find_element(By.NAME, 'text')
-        search_field.send_keys(id_item)
+        search_field.send_keys(str(id_item))
         search_field.send_keys(Keys.ENTER)
         return driver
 
-    def __get_item_page(self, id_item: str) -> str:
+    def __get_item_page(self, id_item: int) -> str:
         driver = self.__init_webdriver()
         driver.get('https://www.ozon.ru/')
-        time.sleep(5)
+        time.sleep(10)
         driver = self.__search_item(driver, id_item)
         item_page = driver.page_source
         return item_page
 
-    def __get_pretty_soup_item_page(self, id_item: str) -> str:
+    def __get_pretty_soup_item_page(self, id_item: int) -> str:
         item_page = self.__get_item_page(id_item)
         soup_item_page = BeautifulSoup(item_page, 'lxml')
         pretty_soup_item_page = soup_item_page.prettify()
@@ -112,9 +115,10 @@ class ItemParserOzon(ItemParserBase):
                               .find_next('div', {'data-widget': 'webPrice'}) \
                               .find('span') \
                               .text.strip().replace(u'\u2009', '')[:-1]
-        return int(price)
+        print(price)
+        #return int(price)
 
-    def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: str) -> dict:
+    def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: int) -> dict:
         item_data_dict = {
             "id": id_item,
             "brand": self.__get_item_brand(item_page_soup),
@@ -127,18 +131,18 @@ class ItemParserOzon(ItemParserBase):
         }
         return item_data_dict
 
-    def parse(self, id_item: str) -> Item:
+    def parse(self) -> Item:
         if not os.path.exists('page.html'):
             with open('page.html', 'w', encoding='utf-8') as page:
-                page.write(self.__get_pretty_soup_item_page(id_item))
+                page.write(self.__get_pretty_soup_item_page(self.id_item))
         with open('page.html', 'r', encoding='utf-8') as page:
             item_page_soup = BeautifulSoup(page, 'lxml')
-        item_dict = self.__get_item_dict(item_page_soup, id_item)
+        item_dict = self.__get_item_dict(item_page_soup, self.id_item)
         return self._create_item_obj(item_dict)
 
 
 if __name__ == "__main__":
-    x = ItemParserOzon()
-    print(x.parse("234205944"))
-    y = ItemParserWb()
-    print(y.parse('239898267'))
+    x = ItemParserOzon(1698963541)
+    print(x.parse())
+    # y = ItemParserWb(239898267)
+    # print(y.parse())
