@@ -11,6 +11,7 @@ class Item(BaseModel):
     feedbacks: int
     volume: int
     price: int
+    item_url: str
 
     @model_validator(mode='after')
     def convert_price(self) -> Self:

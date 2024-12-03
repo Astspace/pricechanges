@@ -6,12 +6,13 @@ from selenium.webdriver.common.keys import Keys
 import time
 from bs4 import BeautifulSoup
 import os.path
-from models import Item
+from main.services.models import Item
 
 
 class ItemParserBase:
     def __init__(self, id_item: int):
         self.id_item = id_item
+        self.item_url = None
 
     def _create_item_obj(self, item_data_dict: dict) -> Item:
         item_obj = Item.model_validate(item_data_dict)
@@ -36,6 +37,7 @@ class ItemParserWb(ItemParserBase):
             "feedbacks": response_json["feedbacks"],
             "volume": response_json["volume"],
             "price": response_json["sizes"][0]["price"]["product"],
+            "item_url": f"https://www.wildberries.ru/catalog/{self.id_item}/detail.aspx",
             "marketplace": 'wb'
         }
         return self._create_item_obj(item_data_dict)
@@ -65,6 +67,7 @@ class ItemParserOzon(ItemParserBase):
         driver.get('https://www.ozon.ru/')
         time.sleep(10)
         driver = self.__search_item(driver, id_item)
+        self.item_url = driver.current_url
         item_page = driver.page_source
         return item_page
 
@@ -113,14 +116,14 @@ class ItemParserOzon(ItemParserBase):
     def __get_item_price(self, item_page_soup: BeautifulSoup) -> int:
         price = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
                               .find_next('div', {'data-widget': 'webPrice'}) \
-                              .find('span') \
+                              .find_next('span', {'style': None}) \
                               .text.strip().replace(u'\u2009', '')[:-1]
-        print(price)
-        #return int(price)
+        return int(price)
 
     def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: int) -> dict:
         item_data_dict = {
             "id": id_item,
+            "item_url": self.item_url,
             "brand": self.__get_item_brand(item_page_soup),
             "name": self.__get_item_name(item_page_soup),
             "rating": self.__get_item_rating(item_page_soup),
@@ -133,9 +136,9 @@ class ItemParserOzon(ItemParserBase):
 
     def parse(self) -> Item:
         if not os.path.exists('page.html'):
-            with open('page.html', 'w', encoding='utf-8') as page:
+            with open('main/services/page.html', 'w', encoding='utf-8') as page:
                 page.write(self.__get_pretty_soup_item_page(self.id_item))
-        with open('page.html', 'r', encoding='utf-8') as page:
+        with open('main/services/page.html', 'r', encoding='utf-8') as page:
             item_page_soup = BeautifulSoup(page, 'lxml')
         item_dict = self.__get_item_dict(item_page_soup, self.id_item)
         return self._create_item_obj(item_dict)

@@ -31,6 +31,7 @@ class Items(models.Model):
     price = models.IntegerField(blank=True, null=True, verbose_name='Стоимость')
     mtplace = models.ForeignKey('Marketplace', null=True, blank=True, on_delete=models.SET_NULL, related_name='items', verbose_name='Маркетплейс')
     tags = models.ManyToManyField('TagItem', blank=True, related_name='items')
+    item_url = models.URLField(max_length=255, blank=True, null=True)
     time_create = models.DateTimeField(auto_now_add=True, verbose_name='Время добавления')
 
     objects = models.Manager()
