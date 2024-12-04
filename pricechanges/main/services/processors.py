@@ -1,8 +1,7 @@
+from main.models import Items
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
-import schedule
-import time
 
 
 def preparation_data_for_create_item(data_for_create_item):
@@ -26,4 +25,15 @@ def __refresh_data_for_create_item(data_for_create_item, item_obj: Item):
     return data_for_create_item
 
 
+def __get_database_item_price_list():
+    price_list = list()
+    for i in Items.actual.all():
+        price_list.append([i.id, i.id_item, i.price])
+    return price_list
 
+
+def __check_price_changes(price_database: int, price_parse: int):
+    if price_database == price_parse:
+        return True
+    else:
+        return False

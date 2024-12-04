@@ -3,6 +3,7 @@ from selenium import webdriver
 from selenium_stealth import stealth
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.chrome.options import Options
 import time
 from bs4 import BeautifulSoup
 import os.path
@@ -10,9 +11,10 @@ from main.services.models import Item
 
 
 class ItemParserBase:
-    def __init__(self, id_item: int):
+    def __init__(self, id_item: int, mode: str = 'main'):
         self.id_item = id_item
         self.item_url = None
+        self.mode = mode
 
     def _create_item_obj(self, item_data_dict: dict) -> Item:
         item_obj = Item.model_validate(item_data_dict)
@@ -45,7 +47,9 @@ class ItemParserWb(ItemParserBase):
 
 class ItemParserOzon(ItemParserBase):
     def __init_webdriver(self) -> webdriver.Chrome:
-        driver = webdriver.Chrome()
+        options = Options()
+        options.add_argument('--headless=new')
+        driver = webdriver.Chrome(options=options)
         stealth(driver,
                 languages=["en-US", "en"],
                 vendor="Google Inc.",
@@ -79,35 +83,35 @@ class ItemParserOzon(ItemParserBase):
 
     def __get_item_brand(self, item_page_soup: BeautifulSoup) -> str:
         brand = item_page_soup.find('div', {'data-widget': 'breadCrumbs'}) \
-                              .find_all('span')[-1] \
-                              .text.strip()
+            .find_all('span')[-1] \
+            .text.strip()
         return brand
 
     def __get_item_name(self, item_page_soup: BeautifulSoup) -> str:
         name = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-                              .find('h1') \
-                              .text.strip()
+            .find('h1') \
+            .text.strip()
         return name
 
     def __get_item_rating(self, item_page_soup: BeautifulSoup) -> float:
         rating = float(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-                                     .find('svg') \
-                                     .find_next('div') \
-                                     .text.split()[0])
+                       .find('svg') \
+                       .find_next('div') \
+                       .text.split()[0])
         return rating
 
     def __get_item_feedbacks(self, item_page_soup: BeautifulSoup) -> int:
         feedbacks = int(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-                                     .find('svg') \
-                                     .find_next('div') \
-                                     .text.split()[2])
+                        .find('svg') \
+                        .find_next('div') \
+                        .text.split()[2])
         return feedbacks
 
     def __get_item_volume(self, item_page_soup: BeautifulSoup) -> int:
         volume = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
-                               .find_next('span') \
-                               .find_next('span') \
-                               .text.strip()
+            .find_next('span') \
+            .find_next('span') \
+            .text.strip()
         if len(volume.split()) > 1:
             return -1
         else:
@@ -115,9 +119,9 @@ class ItemParserOzon(ItemParserBase):
 
     def __get_item_price(self, item_page_soup: BeautifulSoup) -> int:
         price = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
-                              .find_next('div', {'data-widget': 'webPrice'}) \
-                              .find_next('span', {'style': None}) \
-                              .text.strip().replace(u'\u2009', '')[:-1]
+                    .find_next('div', {'data-widget': 'webPrice'}) \
+                    .find_next('span', {'style': None}) \
+                    .text.strip().replace(u'\u2009', '')[:-1]
         return int(price)
 
     def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: int) -> dict:
@@ -135,17 +139,22 @@ class ItemParserOzon(ItemParserBase):
         return item_data_dict
 
     def parse(self) -> Item:
-        if not os.path.exists('page.html'):
-            with open('main/services/page.html', 'w', encoding='utf-8') as page:
-                page.write(self.__get_pretty_soup_item_page(self.id_item))
-        with open('main/services/page.html', 'r', encoding='utf-8') as page:
-            item_page_soup = BeautifulSoup(page, 'lxml')
-        item_dict = self.__get_item_dict(item_page_soup, self.id_item)
+        if self.mode == 'main':
+            if not os.path.exists('main/services/page.html'):
+                with open('main/services/page.html', 'w', encoding='utf-8') as page:
+                    page.write(self.__get_pretty_soup_item_page(self.id_item))
+            with open('main/services/page.html', 'r', encoding='utf-8') as page:
+                item_page_soup = BeautifulSoup(page, 'lxml')
+            item_dict = self.__get_item_dict(item_page_soup, self.id_item)
+        else:
+            pretty_soup_item_page = self.__get_pretty_soup_item_page(self.id_item)
+            item_page_soup = BeautifulSoup(pretty_soup_item_page, 'lxml')
+            item_dict = self.__get_item_dict(item_page_soup, self.id_item)
         return self._create_item_obj(item_dict)
 
 
 if __name__ == "__main__":
-    x = ItemParserOzon(1698963541)
+    x = ItemParserOzon(1698963541, mode='change')
     print(x.parse())
     # y = ItemParserWb(239898267)
     # print(y.parse())

@@ -6,7 +6,7 @@ from django.views.generic import TemplateView, ListView, DetailView, CreateView,
 from .forms import AddItemForm
 from .models import Items, Marketplace
 from .utils import DataMixin
-from main.services import processors
+from main.services.processors import preparation_data_for_create_item, get_item_price_change
 
 
 class HomeItems(DataMixin, ListView):
@@ -67,7 +67,7 @@ class AddItem(LoginRequiredMixin, DataMixin, CreateView):
     def form_valid(self, form):
         data_for_create_item = form.save(commit=False)
         data_for_create_item.owner = self.request.user
-        data_for_create_item = processors.preparation_data_for_create_item(data_for_create_item)
+        data_for_create_item = preparation_data_for_create_item(data_for_create_item)
         data_for_create_item.save()
         return super().form_valid(form)
 
