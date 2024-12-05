@@ -39,6 +39,7 @@ class ItemParserWb(ItemParserBase):
             "feedbacks": response_json["feedbacks"],
             "volume": response_json["volume"],
             "price": response_json["sizes"][0]["price"]["product"],
+            "last_price": response_json["sizes"][0]["price"]["product"],
             "item_url": f"https://www.wildberries.ru/catalog/{self.id_item}/detail.aspx",
             "marketplace": 'wb'
         }
@@ -73,6 +74,7 @@ class ItemParserOzon(ItemParserBase):
         driver = self.__search_item(driver, id_item)
         self.item_url = driver.current_url
         item_page = driver.page_source
+        driver.quit()
         return item_page
 
     def __get_pretty_soup_item_page(self, id_item: int) -> str:
@@ -153,8 +155,8 @@ class ItemParserOzon(ItemParserBase):
         return self._create_item_obj(item_dict)
 
 
-if __name__ == "__main__":
-    x = ItemParserOzon(1698963541, mode='change')
-    print(x.parse())
-    # y = ItemParserWb(239898267)
+# if __name__ == "__main__":
+    # x = ItemParserOzon(1698963541)
+    # print(x.parse())
+    # y = ItemParserWb(275117933)
     # print(y.parse())

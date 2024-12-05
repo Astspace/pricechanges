@@ -1,4 +1,4 @@
-from main.models import Items
+from main.models import Items, ItemsChanges
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
@@ -10,7 +10,7 @@ def preparation_data_for_create_item(data_for_create_item):
     if marketplace == 'Wb':
         item_obj = Wb(id_item).parse()
     else:
-        item_obj = Ozon(id_item).parse()
+        item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
     return __refresh_data_for_create_item(data_for_create_item, item_obj)
 
 
@@ -22,18 +22,40 @@ def __refresh_data_for_create_item(data_for_create_item, item_obj: Item):
     data_for_create_item.volume = item_obj.volume
     data_for_create_item.brand = item_obj.brand
     data_for_create_item.price = item_obj.price
+    data_for_create_item.last_price = item_obj.price
     return data_for_create_item
 
 
-def __get_database_item_price_list():
-    price_list = list()
-    for i in Items.actual.all():
-        price_list.append([i.id, i.id_item, i.price])
-    return price_list
-
-
-def __check_price_changes(price_database: int, price_parse: int):
-    if price_database == price_parse:
+def __check_price_changes(item_price_database: int, item_price_parse: int):
+    if item_price_database == item_price_parse:
         return True
     else:
         return False
+
+
+def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
+    ItemsChanges.objects.create(item_relations=item_db,
+                                name=parse_item.name,
+                                feedbacks=parse_item.feedbacks,
+                                price=parse_item.price,
+                                rating=parse_item.rating,
+                                volume=parse_item.volume)
+
+
+def __get_parse_item(item: Items):
+    if item.mtplace.name == 'Wb':
+        parse_item: Item = Wb(id_item=item.id_item).parse()
+    else:
+        parse_item: Item = Ozon(id_item=item.id_item, mode='for_changes').parse()
+    return parse_item
+
+
+def change_item_price_database() -> None:
+    while True:
+        items_database = Items.actual.all()
+        for item in items_database:
+            parse_item = __get_parse_item(item)
+            if not __check_price_changes(item.last_price, parse_item.price):
+                __update_item_price_database(item_db=item, parse_item=parse_item)
+                item.last_price = parse_item.price
+                item.save()
