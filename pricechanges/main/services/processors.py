@@ -2,6 +2,7 @@ from main.models import Items, ItemsChanges
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
+import time
 
 
 def preparation_data_for_create_item(data_for_create_item):
@@ -50,12 +51,17 @@ def __get_parse_item(item: Items):
     return parse_item
 
 
+def __update_item_for_schedule(item: Items):
+    parse_item = __get_parse_item(item)
+    if not __check_price_changes(item.last_price, parse_item.price):
+        __update_item_price_database(item_db=item, parse_item=parse_item)
+        item.last_price = parse_item.price
+        item.save()
+
+
 def change_item_price_database() -> None:
     while True:
         items_database = Items.actual.all()
         for item in items_database:
-            parse_item = __get_parse_item(item)
-            if not __check_price_changes(item.last_price, parse_item.price):
-                __update_item_price_database(item_db=item, parse_item=parse_item)
-                item.last_price = parse_item.price
-                item.save()
+            __update_item_for_schedule(item)
+            time.sleep(30)

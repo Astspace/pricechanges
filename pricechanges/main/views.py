@@ -85,7 +85,6 @@ class UpdateItem(DataMixin, UpdateView):
 
 
 def contact(request):
-    time.sleep(100)
     return HttpResponse("Обратная связь")
 
 

@@ -8,7 +8,11 @@
 	<p class="first">Маркетплейс: {{i.mtplace.name}}</p>
 	<p class="last">Бренд: {{i.brand}}</p>
     </div>
+			{% if i.name_for_user %}
+			<h2>{{i.name_for_user}}</h2>
+			{% else %}
 			<h2>{{i.name}}</h2>
+			{% endif %}
     {% autoescape off %}
 	{{i.content|linebreaks|truncatewords:40}}
     {% endautoescape %}
