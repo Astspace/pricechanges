@@ -7,7 +7,6 @@ from .forms import AddItemForm
 from .models import Items, Marketplace
 from .utils import DataMixin
 from main.services import processors
-import time
 
 
 class HomeItems(DataMixin, ListView):
