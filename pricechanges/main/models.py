@@ -97,7 +97,7 @@ class ItemsChanges(models.Model):
     volume = models.IntegerField(blank=True, null=True, verbose_name='Обновленные остатки на складе')
 
     objects = models.Manager()
-    actual = ActualItemsManager()
+    #actual = ...
 
     def __str__(self):
         return self.name

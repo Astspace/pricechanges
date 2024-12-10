@@ -4,7 +4,7 @@ from django.shortcuts import get_object_or_404
 from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView
 from .forms import AddItemForm
-from .models import Items, Marketplace
+from .models import Items, Marketplace, ItemsChanges
 from .utils import DataMixin
 from main.services import processors
 
@@ -31,7 +31,8 @@ class ShowItem(DataMixin, DetailView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        return self.get_mixin_context(context, title=context['item'].name)
+        list_item_history = ItemsChanges.objects.filter(item_relations=context['item'].id)
+        return self.get_mixin_context(context, title=context['item'].name, history=list_item_history)
 
     def get_object(self, queryset=None):
         return get_object_or_404(Items.actual, slug=self.kwargs[self.slug_url_kwarg])

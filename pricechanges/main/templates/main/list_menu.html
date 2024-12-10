@@ -1,7 +1,6 @@
 {% for m in menu %}
-{% if m.pk == menu_select %}
-<li class="selected">{{m.name}}</li>
-{% else %}
-<li><a href="{% url 'marketplace' m.slug %}">{{ m.name }}</a></li>
-{% endif %}
+<li>
+    <a href="{% url 'marketplace' m.slug %}" class="nav-link px-0 align-middle">
+        <i class="fs-4 bi-table"></i> <span class="ms-1 d-none d-sm-inline">{{ m.name }}</span></a>
+</li>
 {% endfor %}

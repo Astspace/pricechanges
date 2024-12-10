@@ -19,4 +19,12 @@
 <p>{{ item.name_for_user }}</p>
 <p>{{ item.brand }}</p>
 <p>{{ item.rating }}</p>
+
+<p>-------------</p>
+
+{% for i in history %}
+    <p>{{ i.time_create }}</p>
+    <p>{{ i.name }}</p>
+    <p>{{ i.price }}</p>
+{% endfor %}
 {% endblock %}
