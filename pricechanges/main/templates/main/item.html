@@ -27,4 +27,30 @@
     <p>{{ i.name }}</p>
     <p>{{ i.price }}</p>
 {% endfor %}
+
+
+<table class="table">
+  <thead>
+    <tr>
+      <th scope="col">Количество отзывов</th>
+      <th scope="col">Рейтинг</th>
+      <th scope="col">Остатки на складе</th>
+      <th scope="col">Цена</th>
+      <th scope="col">Дата / время обновления</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for i in history %}
+    <tr>
+      <td>{{ i.feedbacks }}</td>
+      <td>{{ i.rating }}</td>
+      <td>{{ i.volume }}</td>
+      <td>{{ i.price }}</td>
+      <td>{{ i.time_create }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+
+
 {% endblock %}

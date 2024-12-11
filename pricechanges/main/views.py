@@ -16,7 +16,7 @@ class HomeItems(DataMixin, ListView):
     menu_selected = 0
 
     def get_queryset(self):
-        return Items.actual.all().select_related('mtplace')
+        return Items.actual.filter(owner_id=self.request.user.id).select_related('mtplace')
 
 
 class About(DataMixin, TemplateView):
@@ -32,10 +32,12 @@ class ShowItem(DataMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         list_item_history = ItemsChanges.objects.filter(item_relations=context['item'].id)
-        return self.get_mixin_context(context, title=context['item'].name, history=list_item_history)
+        return self.get_mixin_context(context, title=context['item'].name,
+                                               history=list_item_history)
 
     def get_object(self, queryset=None):
-        return get_object_or_404(Items.actual, slug=self.kwargs[self.slug_url_kwarg])
+        return get_object_or_404(Items.actual, slug=self.kwargs[self.slug_url_kwarg],
+                                               owner_id=self.request.user.id)
 
 
 class ShowMenu(DataMixin, ListView):
@@ -45,10 +47,12 @@ class ShowMenu(DataMixin, ListView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         mpl = Marketplace.objects.get(slug=self.kwargs['mtplace_slug'])
-        return self.get_mixin_context(context, menu_selected=mpl.pk, title=f'Просмотр товаров с {mpl.name}')
+        return self.get_mixin_context(context, menu_selected=mpl.pk,
+                                               title=f'Просмотр товаров с {mpl.name}')
 
     def get_queryset(self):
-        return Items.actual.filter(mtplace__slug=self.kwargs['mtplace_slug']).select_related('mtplace')
+        return Items.actual.filter(mtplace__slug=self.kwargs['mtplace_slug'],
+                                   owner_id=self.request.user.id).select_related('mtplace')
 
 
 class ShowTagItems(DataMixin, ListView):
@@ -57,7 +61,8 @@ class ShowTagItems(DataMixin, ListView):
     title = 'Просмотр товаров по тегам'
 
     def get_queryset(self):
-        return Items.actual.filter(tags__slug=self.kwargs['tag_slug']).select_related('mtplace')
+        return Items.actual.filter(tags__slug=self.kwargs['tag_slug'],
+                                   owner_id=self.request.user.id).select_related('mtplace')
 
 
 class AddItem(LoginRequiredMixin, DataMixin, CreateView):

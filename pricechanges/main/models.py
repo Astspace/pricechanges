@@ -15,7 +15,7 @@ def translit_to_eng(s: str) -> str:
 
 class ActualItemsManager(models.Manager):
     def get_queryset(self):
-        return super().get_queryset().filter(id_item__isnull=False)
+        return super().get_queryset().filter(active=True)
 
 
 class Items(models.Model):
@@ -34,6 +34,7 @@ class Items(models.Model):
     tags = models.ManyToManyField('TagItem', blank=True, related_name='items')
     item_url = models.URLField(max_length=255, blank=True, null=True)
     time_create = models.DateTimeField(auto_now_add=True, verbose_name='Время добавления')
+    active = models.BooleanField(default=True)
 
     objects = models.Manager()
     actual = ActualItemsManager()
@@ -97,7 +98,6 @@ class ItemsChanges(models.Model):
     volume = models.IntegerField(blank=True, null=True, verbose_name='Обновленные остатки на складе')
 
     objects = models.Manager()
-    #actual = ...
 
     def __str__(self):
         return self.name
