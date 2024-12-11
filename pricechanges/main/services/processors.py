@@ -64,4 +64,4 @@ def change_item_price_database() -> None:
         items_database = Items.actual.all()
         for item in items_database:
             __update_item_for_schedule(item)
-            time.sleep(30)
+            time.sleep(10)
