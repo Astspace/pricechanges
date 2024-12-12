@@ -5,6 +5,7 @@ from django.urls import reverse_lazy
 from django.views.generic import TemplateView, ListView, DetailView, CreateView, UpdateView
 from .forms import AddItemForm
 from .models import Items, Marketplace, ItemsChanges
+from .services.graphics import graph
 from .utils import DataMixin
 from main.services import processors
 
@@ -33,7 +34,7 @@ class ShowItem(DataMixin, DetailView):
         context = super().get_context_data(**kwargs)
         list_item_history = ItemsChanges.objects.filter(item_relations=context['item'].id)
         return self.get_mixin_context(context, title=context['item'].name,
-                                               history=list_item_history)
+                                               history=list_item_history, graph=graph)
 
     def get_object(self, queryset=None):
         return get_object_or_404(Items.actual, slug=self.kwargs[self.slug_url_kwarg],
