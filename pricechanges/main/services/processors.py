@@ -1,8 +1,10 @@
 from main.models import Items, ItemsChanges
+from main.services.graphics import generate_image_graph_price_changes
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
 import time
+from datetime import datetime
 
 
 def preparation_data_for_create_item(data_for_create_item):
@@ -65,3 +67,20 @@ def change_item_price_database() -> None:
         for item in items_database:
             __update_item_for_schedule(item)
             time.sleep(10)
+
+
+def get_list_item_history(item_relations: int) -> list:
+    list_history = ItemsChanges.objects.filter(item_relations=item_relations)
+    return list_history
+
+
+def __get_data_for_graph_price_changes(list_history: list):
+    list_prices = [i.price for i in list_history]
+    list_time_creates = [i.time_create.date() for i in list_history]
+    return list_prices, list_time_creates
+
+
+def get_image_graph_price_changes(list_history: list):
+    list_prices, list_time_creates = __get_data_for_graph_price_changes(list_history)
+    graph_item_history = generate_image_graph_price_changes(price=list_prices, dates=list_time_creates)
+    return graph_item_history
