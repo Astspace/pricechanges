@@ -1,5 +1,5 @@
 from main.models import Items, ItemsChanges
-from main.services.graphics import generate_image_graph_price_changes
+from main.services.graphics import GraphPriceChanges
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
@@ -82,5 +82,6 @@ def __get_data_for_graph_price_changes(list_history: list):
 
 def get_image_graph_price_changes(list_history: list):
     list_prices, list_time_creates = __get_data_for_graph_price_changes(list_history)
-    graph_item_history = generate_image_graph_price_changes(price=list_prices, dates=list_time_creates)
+    graph_item_history = GraphPriceChanges(price=list_prices, dates=list_time_creates) \
+                                                 .generate_image_graph_price_changes()
     return graph_item_history
