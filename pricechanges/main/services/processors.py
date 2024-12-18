@@ -1,10 +1,9 @@
 from main.models import Items, ItemsChanges
-from main.services.graphics import GraphPriceChanges
+from main.services.graphics import GraphPriceChanges, GraphActualPrice
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
 import time
-from datetime import datetime
 
 
 def preparation_data_for_create_item(data_for_create_item):
@@ -74,14 +73,14 @@ def get_list_item_history(item_relations: int) -> list:
     return list_history
 
 
-def __get_data_for_graph_price_changes(list_history: list):
-    list_prices = [i.price for i in list_history]
-    list_time_creates = [i.time_create.date() for i in list_history]
-    return list_prices, list_time_creates
-
-
 def get_image_graph_price_changes(list_history: list):
-    list_prices, list_time_creates = __get_data_for_graph_price_changes(list_history)
-    graph_item_history = GraphPriceChanges(price=list_prices, dates=list_time_creates) \
-                                                 .generate_image_graph_price_changes()
+    graph_item_history = GraphPriceChanges(list_history).generate_image_graph_price_changes()
     return graph_item_history
+
+
+def get_image_graph_actual_price(list_history: list):
+    obj_history_actual_price = list_history.last()
+    obj_history_min_price = list_history.order_by('price').first()
+    obj_history_max_price = list_history.order_by('price').last()
+    graph_actual_price = GraphActualPrice(list_history).generate_image_graph_actual_prices()
+    return graph_actual_price
