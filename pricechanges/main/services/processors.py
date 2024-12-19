@@ -1,4 +1,4 @@
-from main.models import Items, ItemsChanges
+from main.models import Items, ItemsChanges, Profile
 from main.services.graphics import GraphPriceChanges, GraphActualPrice
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
@@ -79,8 +79,13 @@ def get_image_graph_price_changes(list_history: list):
 
 
 def get_image_graph_actual_price(list_history: list):
-    obj_history_actual_price = list_history.last()
-    obj_history_min_price = list_history.order_by('price').first()
-    obj_history_max_price = list_history.order_by('price').last()
     graph_actual_price = GraphActualPrice(list_history).generate_image_graph_actual_prices()
     return graph_actual_price
+
+
+def check_user_register_bot(telegram_id: int):
+    try:
+        user = Profile.objects.get(telegram_id=telegram_id)
+    except Profile.DoesNotExist:
+        user = None
+    return user #Надо сразу вернуть полноценного юзера
