@@ -2,7 +2,6 @@ from django.contrib.auth import get_user_model
 from django.db import models
 from django.template.defaultfilters import slugify
 from django.urls import reverse
-from django.contrib.auth.models import User
 
 
 def translit_to_eng(s: str) -> str:
@@ -120,5 +119,5 @@ class ItemsChanges(models.Model):
 
 
 class Profile(models.Model):
-    user_relations = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    user_relations = models.OneToOneField(get_user_model(), on_delete=models.CASCADE, related_name='profile')
     telegram_id = models.IntegerField(blank=True, null=True, verbose_name='Telegram ID')

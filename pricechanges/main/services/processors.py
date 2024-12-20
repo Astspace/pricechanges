@@ -3,7 +3,11 @@ from main.services.graphics import GraphPriceChanges, GraphActualPrice
 from main.services.models import Item
 from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
+from django.contrib.auth import get_user_model
 import time
+
+
+User = get_user_model()
 
 
 def preparation_data_for_create_item(data_for_create_item):
@@ -85,7 +89,28 @@ def get_image_graph_actual_price(list_history: list):
 
 def check_user_register_bot(telegram_id: int):
     try:
-        user = Profile.objects.get(telegram_id=telegram_id)
+        user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
     except Profile.DoesNotExist:
-        user = None
-    return user #Надо сразу вернуть полноценного юзера
+        return False
+    else:
+        user = User.objects.get(id=user_id)
+        return user
+
+
+def search_user_by_username(username: str):
+    try:
+        user = User.objects.get(username=username)
+    except User.DoesNotExist:
+        return False
+    else:
+        return user
+
+
+def binding_site_user_tgbot(message):
+    user = search_user_by_username(message.from_user.text)
+    if user:
+        create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
+
+
+def create_user_tgbot(user_id: int, telegram_id: int):
+       Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
