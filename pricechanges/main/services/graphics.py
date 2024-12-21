@@ -61,7 +61,6 @@ class GraphActualPrice(GraphBase):
         self.actual_price = item_history.last().price
         self.min_price = item_history.order_by('price').first().price
         self.max_price = item_history.order_by('price').last().price
-        print(self.actual_price, self.min_price, self.max_price)
 
     def __generate_plot_graph_actual_price(self):
         fig = plt.figure(figsize=(8, 4), dpi=80)

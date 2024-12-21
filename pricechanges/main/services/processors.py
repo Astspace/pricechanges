@@ -114,3 +114,13 @@ def binding_site_user_tgbot(message):
 
 def create_user_tgbot(user_id: int, telegram_id: int):
        Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
+
+
+def check_availability_bot(item: Items):
+    user_id = item.owner.id
+    try:
+        profile = Profile.objects.get(user_relations_id=user_id)
+    except User.DoesNotExist:
+        return False
+    else:
+        return profile.telegram_id
