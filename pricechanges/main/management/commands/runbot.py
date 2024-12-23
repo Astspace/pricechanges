@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from telebot import TeleBot
 import os
+
 from main.models import Items
 from main.services import processors as pr
 
@@ -29,8 +30,9 @@ def binding_site_user_tgbot(message):
 
 
 def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items):
+    name_item = item.name_for_user if item.name_for_user else item.name
     bot.send_message(telegram_id,
-                     f'Цена на товар {(lambda x: item.name_for_user if item.name_for_user else item.name)} изменилась:'
+                     f'Цена на товар {name_item} изменилась:'
                      f'старая цена: {last_price}, новая цена: {actual_price}')
 
 

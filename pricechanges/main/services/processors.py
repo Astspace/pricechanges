@@ -6,7 +6,6 @@ from main.services.parser import ItemParserOzon as Ozon
 from django.contrib.auth import get_user_model
 import time
 
-
 User = get_user_model()
 
 
@@ -62,6 +61,17 @@ def __update_item_for_schedule(item: Items):
         __update_item_price_database(item_db=item, parse_item=parse_item)
         item.last_price = parse_item.price
         item.save()
+        send_price_change_message(item, parse_item)
+
+
+def send_price_change_message(item: Items, parse_item):
+    telegram_id = check_availability_bot(item)
+    if telegram_id:
+        from main.management.commands.runbot import price_change_message
+        price_change_message(telegram_id=telegram_id,
+                             last_price=item.last_price,
+                             actual_price=parse_item.price,
+                             item=item)
 
 
 def change_item_price_database() -> None:
@@ -69,7 +79,7 @@ def change_item_price_database() -> None:
         items_database = Items.actual.all()
         for item in items_database:
             __update_item_for_schedule(item)
-            time.sleep(10)
+            time.sleep(5)
 
 
 def get_list_item_history(item_relations: int) -> list:
@@ -83,8 +93,11 @@ def get_image_graph_price_changes(list_history: list):
 
 
 def get_image_graph_actual_price(list_history: list):
-    graph_actual_price = GraphActualPrice(list_history).generate_image_graph_actual_prices()
-    return graph_actual_price
+    if list_history:
+        graph_actual_price = GraphActualPrice(list_history).generate_image_graph_actual_prices()
+        return graph_actual_price
+    else:
+        return False
 
 
 def check_user_register_bot(telegram_id: int):
@@ -113,7 +126,7 @@ def binding_site_user_tgbot(message):
 
 
 def create_user_tgbot(user_id: int, telegram_id: int):
-       Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
+    Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
 
 
 def check_availability_bot(item: Items):
