@@ -16,8 +16,12 @@
 
 {% block content %}
 <h1>{{title}}</h1><br>
+{% if graph %}
 {{graph}}
+{% endif %}
+{% if graph_actual %}
 {{graph_actual}}
+{% endif %}
 <table class="table">
   <thead>
     <tr>

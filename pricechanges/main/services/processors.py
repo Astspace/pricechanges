@@ -59,17 +59,18 @@ def __update_item_for_schedule(item: Items):
     parse_item = __get_parse_item(item)
     if not __check_price_changes(item.last_price, parse_item.price):
         __update_item_price_database(item_db=item, parse_item=parse_item)
+        last_price_tgbot = item.last_price
         item.last_price = parse_item.price
         item.save()
-        send_price_change_message(item, parse_item)
+        send_price_change_message(item, parse_item, last_price_tgbot)
 
 
-def send_price_change_message(item: Items, parse_item):
+def send_price_change_message(item: Items, parse_item, last_price: int):
     telegram_id = check_availability_bot(item)
     if telegram_id:
         from main.management.commands.runbot import price_change_message
         price_change_message(telegram_id=telegram_id,
-                             last_price=item.last_price,
+                             last_price=last_price,
                              actual_price=parse_item.price,
                              item=item)
 
@@ -88,8 +89,11 @@ def get_list_item_history(item_relations: int) -> list:
 
 
 def get_image_graph_price_changes(list_history: list):
-    graph_item_history = GraphPriceChanges(list_history).generate_image_graph_price_changes()
-    return graph_item_history
+    if list_history:
+        graph_item_history = GraphPriceChanges(list_history).generate_image_graph_price_changes()
+        return graph_item_history
+    else:
+        return False
 
 
 def get_image_graph_actual_price(list_history: list):

@@ -16,6 +16,6 @@ class Item(BaseModel):
     @model_validator(mode='after')
     def convert_price(self) -> Self:
         if self.price is not None and self.marketplace == 'wb':
-            self.price = int(self.price / 100)
+            self.price = int(self.price / 98)
             return self
         return self
