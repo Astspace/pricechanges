@@ -1,19 +1,35 @@
 from django.core.management.base import BaseCommand
 from telebot import TeleBot
 import os
-
+from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 from main.models import Items
 from main.services import processors as pr
+from main.services.processors import get_item_list_tgbot
 
 
 bot = TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
+
+button = KeyboardButton(text="Список товаров")
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
+keyboard.add(button)
+
+
+@bot.message_handler(func=lambda message: message.text == "Список товаров")
+def main_handler(message):
+    telegram_id = message.from_user.id
+    items_list = get_item_list_tgbot(telegram_id)
+    name_items_str = ''
+    for i in items_list:
+        name_items_str += str(i.name_for_user) + '\n'
+    bot.send_message(message.chat.id, f'Список Ваших товаров:\n\n{name_items_str}', reply_markup=keyboard)
+
 
 @bot.message_handler()
 def main_handler(message):
     telegram_id = message.from_user.id
     user = pr.check_user_register_bot(telegram_id)
     if user:
-        bot.send_message(message.chat.id, f'Ваш телеграм привязан к профилю сайта! Имя профиля: {user.username}')
+        bot.send_message(message.chat.id, f'Имя Вашего профиля: {user.username}.\nВыберите пункт меню.', reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, 'Ваш телеграм не привязан к профилю сайта! Введите имя профиля:')
         bot.register_next_step_handler(message, binding_site_user_tgbot)
@@ -23,7 +39,7 @@ def binding_site_user_tgbot(message):
     user = pr.search_user_by_username(message.text)
     if user:
         pr.create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
-        bot.send_message(message.chat.id, f'Теперь Ваш телеграм привязан к профилю сайта! Имя профиля: {user.username}')
+        bot.send_message(message.chat.id, f'Теперь Ваш телеграм привязан к профилю сайта! Имя профиля: {user.username}', reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, f'Введенный Вами профиль {message.text} не существует! Введите корректное имя профиля:')
         bot.register_next_step_handler(message, binding_site_user_tgbot)

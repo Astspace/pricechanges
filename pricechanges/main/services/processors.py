@@ -6,6 +6,7 @@ from main.services.parser import ItemParserOzon as Ozon
 from django.contrib.auth import get_user_model
 import time
 
+
 User = get_user_model()
 
 
@@ -141,3 +142,9 @@ def check_availability_bot(item: Items):
         return False
     else:
         return profile.telegram_id
+
+
+def get_item_list_tgbot(telegram_id: int):
+    user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+    items_list = Items.actual.filter(owner=user_id)
+    return items_list
