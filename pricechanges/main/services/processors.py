@@ -138,7 +138,7 @@ def check_availability_bot(item: Items):
     user_id = item.owner.id
     try:
         profile = Profile.objects.get(user_relations_id=user_id)
-    except User.DoesNotExist:
+    except Profile.DoesNotExist:
         return False
     else:
         return profile.telegram_id
@@ -148,3 +148,25 @@ def get_item_list_tgbot(telegram_id: int):
     user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
     items_list = Items.actual.filter(owner=user_id)
     return items_list
+
+
+def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id):
+    list_history = get_list_history_item_tgbot(mktplace_item_id, telegram_id)
+    if list_history:
+        user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+        user_name = User.objects.get(id=user_id).username
+        graph_actual_price = GraphActualPrice(list_history).save_image_graph_actual_prices_tgbot(user_name=user_name)
+        return graph_actual_price
+    else:
+        return False
+
+
+def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id):
+    user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+    try:
+        item = Items.actual.get(id_item=mktplace_item_id, owner=user_id)
+    except Items.DoesNotExist:
+        return False
+    else:
+        item_history = get_list_item_history(item_relations=item.id)
+        return item_history

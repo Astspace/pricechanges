@@ -87,3 +87,15 @@ class GraphActualPrice(GraphBase):
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
         image_graph = self.generate_image_graph(plot_graph_actual_prices)
         return image_graph
+
+    def generate_image_graph_actual_prices_tgbot(self):
+        plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
+        image_graph = self._convert_plot_to_base64_encoded_image(plot_graph_actual_prices)
+        return image_graph
+
+    def save_image_graph_actual_prices_tgbot(self, user_name: str):
+        image_graph = self.generate_image_graph_actual_prices_tgbot()
+        path = f'pricechanges/main/services/{user_name}/image.jpg'
+        with open(path, 'w') as image:
+            image.write(image_graph)
+        return path

@@ -4,24 +4,40 @@ import os
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 from main.models import Items
 from main.services import processors as pr
-from main.services.processors import get_item_list_tgbot
-
+from main.services.processors import get_item_list_tgbot, get_image_graph_actual_price_tgbot
 
 bot = TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
 
-button = KeyboardButton(text="Список товаров")
+button_list_item = KeyboardButton(text="Список товаров")
+button_analysis_item = KeyboardButton(text="Анализ цены товара")
 keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-keyboard.add(button)
+keyboard.add(button_list_item, button_analysis_item)
 
 
 @bot.message_handler(func=lambda message: message.text == "Список товаров")
-def main_handler(message):
+def list_item_tgbot(message):
     telegram_id = message.from_user.id
     items_list = get_item_list_tgbot(telegram_id)
     name_items_str = ''
     for i in items_list:
         name_items_str += str(i.name_for_user) + '\n'
     bot.send_message(message.chat.id, f'Список Ваших товаров:\n\n{name_items_str}', reply_markup=keyboard)
+
+
+@bot.message_handler(func=lambda message: message.text == "Анализ цены товара")
+def analysis_price_item(message):
+    bot.send_message(message.chat.id, 'Введите id отслеживаемого товара с маркетплейса:')
+    bot.register_next_step_handler(message, get_image_price_item)
+
+
+def get_image_price_item(message):
+    mktplace_item_id = message.text
+    telegram_id = message.from_user.id
+    image = get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
+    if image:
+        bot.send_photo(message.chat.id, image, reply_markup=keyboard)
+    else:
+        bot.send_message(message.chat.id, 'Товар с указанным id Вы не отслеживаете!', reply_markup=keyboard)
 
 
 @bot.message_handler()
