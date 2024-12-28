@@ -35,7 +35,8 @@ def get_image_price_item(message):
     telegram_id = message.from_user.id
     image = get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
     if image:
-        bot.send_photo(message.chat.id, image, reply_markup=keyboard)
+        with open(image, 'rb') as image:
+            bot.send_photo(message.chat.id, image, reply_markup=keyboard)
     else:
         bot.send_message(message.chat.id, 'Товар с указанным id Вы не отслеживаете!', reply_markup=keyboard)
 

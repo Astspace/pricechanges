@@ -95,7 +95,8 @@ class GraphActualPrice(GraphBase):
 
     def save_image_graph_actual_prices_tgbot(self, user_name: str):
         image_graph = self.generate_image_graph_actual_prices_tgbot()
-        path = f'pricechanges/main/services/{user_name}/image.jpg'
-        with open(path, 'w') as image:
-            image.write(image_graph)
+        path = f'main/services/image_{user_name}.jpg'
+        image_data = base64.b64decode(image_graph)
+        with open(path, 'wb') as image:
+            image.write(image_data)
         return path
