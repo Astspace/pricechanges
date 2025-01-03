@@ -16,34 +16,45 @@ class ItemParserBase:
         self.item_url = None
         self.mode = mode
 
-    def _create_item_obj(self, item_data_dict: dict) -> Item:
-        item_obj = Item.model_validate(item_data_dict)
+    def _create_item_obj(self, item_data_dict: dict) -> str | Item:
+        try:
+            item_obj = Item.model_validate(item_data_dict)
+        except Exception:
+            return 'Ошибка обработки данных товара с маркетплейса! Обратитесь к разработчику.'
         return item_obj
 
 
 class ItemParserWb(ItemParserBase):
-    def parse(self) -> Item:
+    def parse(self) -> Item | str:
         params = {
             'dest': '-1257786',
             'nm': self.id_item,
         }
         response = requests.get('https://card.wb.ru/cards/v2/detail', params=params)
-        return self.__get_item_dict(response.json()["data"]["products"][0])
+        response_json = response.json()["data"]["products"][0]
+        if response_json:
+            return self.__get_item_dict(response_json)
+        else:
+            return 'Не удалось получить данные товара с Wb. Проверьте правильность введенного id товара!'
 
-    def __get_item_dict(self, response_json: dict) -> Item:
-        item_data_dict = {
-            "id": response_json["id"],
-            "brand": response_json["brand"],
-            "name": response_json["name"],
-            "rating": response_json["reviewRating"],
-            "feedbacks": response_json["feedbacks"],
-            "volume": response_json["volume"],
-            "price": response_json["sizes"][0]["price"]["product"],
-            "last_price": response_json["sizes"][0]["price"]["product"],
-            "item_url": f"https://www.wildberries.ru/catalog/{self.id_item}/detail.aspx",
-            "marketplace": 'wb'
-        }
-        return self._create_item_obj(item_data_dict)
+    def __get_item_dict(self, response_json: dict) -> str | Item:
+        try:
+            item_data_dict = {
+                "id": response_json["id"],
+                "brand": response_json["brand"],
+                "name": response_json["name"],
+                "rating": response_json["reviewRating"],
+                "feedbacks": response_json["feedbacks"],
+                "volume": response_json["volume"],
+                "price": response_json["sizes"][0]["price"]["product"],
+                "last_price": response_json["sizes"][0]["price"]["product"],
+                "item_url": f"https://www.wildberries.ru/catalog/{self.id_item}/detail.aspx",
+                "marketplace": 'wb'
+            }
+        except Exception:
+            return 'Не удалось обработать данные, полученные с Wb! Обратитесь к разработчику.'
+        else:
+            return self._create_item_obj(item_data_dict)
 
 
 class ItemParserOzon(ItemParserBase):
@@ -68,13 +79,17 @@ class ItemParserOzon(ItemParserBase):
         return driver
 
     def __get_item_page(self, id_item: int) -> str:
-        driver = self.__init_webdriver()
-        driver.get('https://www.ozon.ru/')
-        time.sleep(10)
-        driver = self.__search_item(driver, id_item)
-        self.item_url = driver.current_url
-        item_page = driver.page_source
-        driver.quit()
+        try:
+            driver = self.__init_webdriver()
+            driver.get('https://www.ozon.ru/')
+            time.sleep(10)
+            driver = self.__search_item(driver, id_item)
+            self.item_url = driver.current_url
+            item_page = driver.page_source
+        except Exception:
+            return 'Не удалось получить данные о товаре с Ozon.'
+        finally:
+            driver.quit()
         return item_page
 
     def __get_pretty_soup_item_page(self, id_item: int) -> str:
@@ -84,46 +99,64 @@ class ItemParserOzon(ItemParserBase):
         return pretty_soup_item_page
 
     def __get_item_brand(self, item_page_soup: BeautifulSoup) -> str:
-        brand = item_page_soup.find('div', {'data-widget': 'breadCrumbs'}) \
-            .find_all('span')[-1] \
-            .text.strip()
+        try:
+            brand = item_page_soup.find('div', {'data-widget': 'breadCrumbs'}) \
+                .find_all('span')[-1] \
+                .text.strip()
+        except Exception:
+            return 'Бренд не определен.'
         return brand
 
     def __get_item_name(self, item_page_soup: BeautifulSoup) -> str:
-        name = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-            .find('h1') \
-            .text.strip()
+        try:
+            name = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
+                .find('h1') \
+                .text.strip()
+        except Exception:
+            return 'Наименование не определено'
         return name
 
     def __get_item_rating(self, item_page_soup: BeautifulSoup) -> float:
-        rating = float(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-                       .find('svg') \
-                       .find_next('div') \
-                       .text.split()[0])
+        try:
+            rating = float(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
+                           .find('svg') \
+                           .find_next('div') \
+                           .text.split()[0])
+        except Exception:
+            return -1
         return rating
 
     def __get_item_feedbacks(self, item_page_soup: BeautifulSoup) -> int:
-        feedbacks = int(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
-                        .find('svg') \
-                        .find_next('div') \
-                        .text.split()[2])
+        try:
+            feedbacks = int(item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
+                            .find('svg') \
+                            .find_next('div') \
+                            .text.split()[2])
+        except Exception:
+            return -1
         return feedbacks
 
     def __get_item_volume(self, item_page_soup: BeautifulSoup) -> int:
-        volume = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
-            .find_next('span') \
-            .find_next('span') \
-            .text.strip()
+        try:
+            volume = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
+                .find_next('span') \
+                .find_next('span') \
+                .text.strip()
+        except Exception:
+            return -1
         if len(volume.split()) > 1:
             return -1
         else:
             return int(volume)
 
     def __get_item_price(self, item_page_soup: BeautifulSoup) -> int:
-        price = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
-                    .find_next('div', {'data-widget': 'webPrice'}) \
-                    .find_next('span', {'style': None}) \
-                    .text.strip().replace(u'\u2009', '')[:-1]
+        try:
+            price = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[2] \
+                        .find_next('div', {'data-widget': 'webPrice'}) \
+                        .find_next('span', {'style': None}) \
+                        .text.strip().replace(u'\u2009', '')[:-1]
+        except Exception:
+            return -1
         return int(price)
 
     def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: int) -> dict:
@@ -140,7 +173,7 @@ class ItemParserOzon(ItemParserBase):
         }
         return item_data_dict
 
-    def parse(self) -> Item:
+    def parse(self) -> Item | str:
         if self.mode == 'main':
             if not os.path.exists('main/services/page.html'):
                 with open('main/services/page.html', 'w', encoding='utf-8') as page:
@@ -153,10 +186,3 @@ class ItemParserOzon(ItemParserBase):
             item_page_soup = BeautifulSoup(pretty_soup_item_page, 'lxml')
             item_dict = self.__get_item_dict(item_page_soup, self.id_item)
         return self._create_item_obj(item_dict)
-
-
-# if __name__ == "__main__":
-    # x = ItemParserOzon(1698963541)
-    # print(x.parse())
-    # y = ItemParserWb(275117933)
-    # print(y.parse())

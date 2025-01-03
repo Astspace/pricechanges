@@ -15,7 +15,11 @@
 {% endblock %}
 
 {% block content %}
-<h1>{{title}}</h1><br>
+{% if item.name_for_user %}
+<h2>{{item.name_for_user}}</h2><br>
+{% else %}
+<h2>{{item.name}}</h2><br>
+{% endif %}
 {% if graph %}
 {{graph}}
 {% endif %}

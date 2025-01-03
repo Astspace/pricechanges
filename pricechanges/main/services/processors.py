@@ -10,17 +10,20 @@ import time
 User = get_user_model()
 
 
-def preparation_data_for_create_item(data_for_create_item):
+def preparation_data_for_create_item(data_for_create_item: Items) -> str | Items:
     marketplace = data_for_create_item.mtplace.name
     id_item = data_for_create_item.id_item
     if marketplace == 'Wb':
         item_obj = Wb(id_item).parse()
     else:
         item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
-    return __refresh_data_for_create_item(data_for_create_item, item_obj)
+    if isinstance(item_obj, str):
+        return item_obj
+    else:
+        return __refresh_data_for_create_item(data_for_create_item, item_obj)
 
 
-def __refresh_data_for_create_item(data_for_create_item, item_obj: Item):
+def __refresh_data_for_create_item(data_for_create_item: Items, item_obj: Item) -> Items:
     data_for_create_item.item_url = item_obj.item_url
     data_for_create_item.name = item_obj.name
     data_for_create_item.rating = item_obj.rating
@@ -32,7 +35,7 @@ def __refresh_data_for_create_item(data_for_create_item, item_obj: Item):
     return data_for_create_item
 
 
-def __check_price_changes(item_price_database: int, item_price_parse: int):
+def __check_price_changes(item_price_database: int, item_price_parse: int) -> bool:
     if item_price_database == item_price_parse:
         return True
     else:
@@ -48,7 +51,7 @@ def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
                                 volume=parse_item.volume)
 
 
-def __get_parse_item(item: Items):
+def __get_parse_item(item: Items) -> Item | str:
     if item.mtplace.name == 'Wb':
         parse_item: Item = Wb(id_item=item.id_item).parse()
     else:
@@ -56,31 +59,39 @@ def __get_parse_item(item: Items):
     return parse_item
 
 
-def __update_item_for_schedule(item: Items):
+def __update_item_for_schedule(item: Items) -> Item | str:
     parse_item = __get_parse_item(item)
+    if isinstance(parse_item, str):
+        return parse_item
     if not __check_price_changes(item.last_price, parse_item.price):
         __update_item_price_database(item_db=item, parse_item=parse_item)
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
         item.save()
         send_price_change_message(item, parse_item, last_price_tgbot)
+    return parse_item
 
 
-def send_price_change_message(item: Items, parse_item, last_price: int):
+def send_price_change_message(item: Items, parse_item, last_price: int) -> None:
     telegram_id = check_availability_bot(item)
     if telegram_id:
         from main.management.commands.runbot import price_change_message
-        price_change_message(telegram_id=telegram_id,
-                             last_price=last_price,
-                             actual_price=parse_item.price,
-                             item=item)
+        try:
+            price_change_message(telegram_id=telegram_id,
+                                 last_price=last_price,
+                                 actual_price=parse_item.price,
+                                 item=item)
+        except Exception:
+            print('Не удалось отправить сообщение через телеграм-бота об изменении цены товара.')
 
 
 def change_item_price_database() -> None:
     while True:
         items_database = Items.actual.all()
         for item in items_database:
-            __update_item_for_schedule(item)
+            res_update_item = __update_item_for_schedule(item)
+            if isinstance(res_update_item, str):
+                print(res_update_item)
             time.sleep(5)
 
 
@@ -89,7 +100,7 @@ def get_list_item_history(item_relations: int) -> list:
     return list_history
 
 
-def get_image_graph_price_changes(list_history: list):
+def get_image_graph_price_changes(list_history: list) -> str | bool:
     if list_history:
         graph_item_history = GraphPriceChanges(list_history).generate_image_graph_price_changes()
         return graph_item_history
@@ -97,7 +108,7 @@ def get_image_graph_price_changes(list_history: list):
         return False
 
 
-def get_image_graph_actual_price(list_history: list):
+def get_image_graph_actual_price(list_history: list) -> str | bool:
     if list_history:
         graph_actual_price = GraphActualPrice(list_history).generate_image_graph_actual_prices()
         return graph_actual_price

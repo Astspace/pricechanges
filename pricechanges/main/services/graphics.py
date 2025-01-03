@@ -22,7 +22,7 @@ class GraphBase():
         img_str = base64.b64encode(buffer.read()).decode('utf-8')
         return img_str
 
-    def generate_image_graph(self, ready_plt):
+    def generate_image_graph(self, ready_plt) -> str:
         img_str = self._convert_plot_to_base64_encoded_image(ready_plt)
         graph = mark_safe(f'<img src="data:image/png;base64,{img_str}">')
         return graph
@@ -49,7 +49,7 @@ class GraphPriceChanges(GraphBase):
         plt.xticks(rotation=45)
         return plt
 
-    def generate_image_graph_price_changes(self):
+    def generate_image_graph_price_changes(self) -> str:
         plot_graph_price_changes = self.__generate_plot_graph_price_changes()
         image_graph = self.generate_image_graph(plot_graph_price_changes)
         return image_graph
