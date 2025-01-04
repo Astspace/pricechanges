@@ -7,11 +7,11 @@ from django.utils.safestring import mark_safe
 
 
 class GraphBase():
-    def _get_time_creates_list(self):
+    def _get_time_creates_list(self) -> list:
         list_time_creates = [i.time_create.date() for i in self.item_history]
         return list_time_creates
 
-    def _get_prices_list(self):
+    def _get_prices_list(self) -> list:
         list_prices = [i.price for i in self.item_history]
         return list_prices
 
@@ -83,17 +83,17 @@ class GraphActualPrice(GraphBase):
         plt.ylabel('Цена')
         return plt
 
-    def generate_image_graph_actual_prices(self):
+    def generate_image_graph_actual_prices(self) -> str:
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
         image_graph = self.generate_image_graph(plot_graph_actual_prices)
         return image_graph
 
-    def generate_image_graph_actual_prices_tgbot(self):
+    def generate_image_graph_actual_prices_tgbot(self) -> str:
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
         image_graph = self._convert_plot_to_base64_encoded_image(plot_graph_actual_prices)
         return image_graph
 
-    def save_image_graph_actual_prices_tgbot(self, user_name: str):
+    def save_image_graph_actual_prices_tgbot(self, user_name: str) -> str:
         image_graph = self.generate_image_graph_actual_prices_tgbot()
         path = f'main/services/image_{user_name}.jpg'
         image_data = base64.b64decode(image_graph)

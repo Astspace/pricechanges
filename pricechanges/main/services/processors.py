@@ -1,3 +1,4 @@
+from django.db.models import QuerySet
 from main.models import Items, ItemsChanges, Profile
 from main.services.graphics import GraphPriceChanges, GraphActualPrice
 from main.services.models import Item
@@ -68,21 +69,33 @@ def __update_item_for_schedule(item: Items) -> Item | str:
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
         item.save()
-        send_price_change_message(item, parse_item, last_price_tgbot)
+        if parse_item.name == 'Наименование не определено' and -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
+            send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
+        else:
+            send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
     return parse_item
 
 
-def send_price_change_message(item: Items, parse_item, last_price: int) -> None:
+def send_price_change_message(item: Items, parse_item, last_price: int, item_out: bool = False) -> None:
     telegram_id = check_availability_bot(item)
     if telegram_id:
-        from main.management.commands.runbot import price_change_message
-        try:
-            price_change_message(telegram_id=telegram_id,
-                                 last_price=last_price,
-                                 actual_price=parse_item.price,
-                                 item=item)
-        except Exception:
-            print('Не удалось отправить сообщение через телеграм-бота об изменении цены товара.')
+        if item_out:
+            from main.management.commands.runbot import price_change_message_item_out
+            try:
+                price_change_message_item_out(telegram_id=telegram_id,
+                                              last_price=last_price,
+                                              item=item)
+            except Exception:
+                print('Не удалось отправить сообщение через телеграм-бота о том, что товар закончился.')
+        else:
+            from main.management.commands.runbot import price_change_message
+            try:
+                price_change_message(telegram_id=telegram_id,
+                                     last_price=last_price,
+                                     actual_price=parse_item.price,
+                                     item=item)
+            except Exception:
+                print('Не удалось отправить сообщение через телеграм-бота об изменении цены товара.')
 
 
 def change_item_price_database() -> None:
@@ -116,7 +129,7 @@ def get_image_graph_actual_price(list_history: list) -> str | bool:
         return False
 
 
-def check_user_register_bot(telegram_id: int):
+def check_user_register_bot(telegram_id: int) -> QuerySet | bool:
     try:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
     except Profile.DoesNotExist:
@@ -126,7 +139,7 @@ def check_user_register_bot(telegram_id: int):
         return user
 
 
-def search_user_by_username(username: str):
+def search_user_by_username(username: str) -> QuerySet | bool:
     try:
         user = User.objects.get(username=username)
     except User.DoesNotExist:
@@ -135,17 +148,17 @@ def search_user_by_username(username: str):
         return user
 
 
-def binding_site_user_tgbot(message):
+def binding_site_user_tgbot(message) -> None:
     user = search_user_by_username(message.from_user.text)
     if user:
         create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
 
 
-def create_user_tgbot(user_id: int, telegram_id: int):
+def create_user_tgbot(user_id: int, telegram_id: int) -> None:
     Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
 
 
-def check_availability_bot(item: Items):
+def check_availability_bot(item: Items) -> int | bool:
     user_id = item.owner.id
     try:
         profile = Profile.objects.get(user_relations_id=user_id)
@@ -155,13 +168,19 @@ def check_availability_bot(item: Items):
         return profile.telegram_id
 
 
-def get_item_list_tgbot(telegram_id: int):
-    user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+def get_item_list_tgbot(telegram_id: int) -> QuerySet | str:
+    try:
+        user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+    except Profile.DoesNotExist:
+        return 'Tg-профиль не найден!'
     items_list = Items.actual.filter(owner=user_id)
-    return items_list
+    if items_list:
+        return items_list
+    else:
+        return 'Отслеживаемые товары не найдены!'
 
 
-def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id):
+def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id) -> str | bool:
     list_history = get_list_history_item_tgbot(mktplace_item_id, telegram_id)
     if list_history:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
@@ -172,7 +191,7 @@ def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id):
         return False
 
 
-def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id):
+def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id) -> list | bool:
     user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
     try:
         item = Items.actual.get(id_item=mktplace_item_id, owner=user_id)

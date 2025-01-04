@@ -1,10 +1,5 @@
 djvenv
 .idea
-.png
+*.pyc
+*.jpg
 .jpg
-.jpeg
-.gif
-.bmp
-.svg
-__pycache__/
-.handler-saves

@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from telebot import TeleBot
+from telebot.types import Message
 import os
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
 from main.models import Items
@@ -15,22 +16,25 @@ keyboard.add(button_list_item, button_analysis_item)
 
 
 @bot.message_handler(func=lambda message: message.text == "Список товаров")
-def list_item_tgbot(message):
+def list_item_tgbot(message: Message) -> None:
     telegram_id = message.from_user.id
     items_list = get_item_list_tgbot(telegram_id)
-    name_items_str = ''
-    for i in items_list:
-        name_items_str += str(i.name_for_user) + '\n'
-    bot.send_message(message.chat.id, f'Список Ваших товаров:\n\n{name_items_str}', reply_markup=keyboard)
+    if isinstance(items_list, str):
+        bot.send_message(message.chat.id, items_list, reply_markup=keyboard)
+    else:
+        name_items_str = ''
+        for i in items_list:
+            name_items_str += str(i.name_for_user) + '\n'
+        bot.send_message(message.chat.id, f'Список Ваших товаров:\n\n{name_items_str}', reply_markup=keyboard)
 
 
 @bot.message_handler(func=lambda message: message.text == "Анализ цены товара")
-def analysis_price_item(message):
+def analysis_price_item(message: Message) -> None:
     bot.send_message(message.chat.id, 'Введите id отслеживаемого товара с маркетплейса:')
     bot.register_next_step_handler(message, get_image_price_item)
 
 
-def get_image_price_item(message):
+def get_image_price_item(message: Message) -> None:
     mktplace_item_id = message.text
     telegram_id = message.from_user.id
     image = get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
@@ -42,7 +46,7 @@ def get_image_price_item(message):
 
 
 @bot.message_handler()
-def main_handler(message):
+def main_handler(message: Message) -> None:
     telegram_id = message.from_user.id
     user = pr.check_user_register_bot(telegram_id)
     if user:
@@ -52,7 +56,7 @@ def main_handler(message):
         bot.register_next_step_handler(message, binding_site_user_tgbot)
 
 
-def binding_site_user_tgbot(message):
+def binding_site_user_tgbot(message: Message) -> None:
     user = pr.search_user_by_username(message.text)
     if user:
         pr.create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
@@ -62,11 +66,18 @@ def binding_site_user_tgbot(message):
         bot.register_next_step_handler(message, binding_site_user_tgbot)
 
 
-def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items):
+def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items) -> None:
     name_item = item.name_for_user if item.name_for_user else item.name
     bot.send_message(telegram_id,
                      f'Цена на товар {name_item} изменилась:'
                      f'старая цена: {last_price}, новая цена: {actual_price}')
+
+
+def price_change_message_item_out(telegram_id: int, last_price: int, item: Items) -> None:
+    name_item = item.name_for_user if item.name_for_user else item.name
+    bot.send_message(telegram_id,
+                     f'Товар {name_item} закончился.'
+                     f'Последняя  цена: {last_price}')
 
 
 class Command(BaseCommand):

@@ -2,26 +2,40 @@
 
 {% block content %}
 <h1>{{title}}</h1>
-<ul class="list-articles">
-	{% for i in data_item %}
-		<li><div class="article-panel">
-	<p class="first">Маркетплейс: {{i.mtplace.name}}</p>
-	<p class="last">Бренд: {{i.brand}}</p>
-    </div>
-			{% if i.name_for_user %}
-			<h2>{{i.name_for_user}}</h2>
-			{% else %}
-			<h2>{{i.name}}</h2>
-			{% endif %}
-    {% autoescape off %}
-	{{i.content|linebreaks|truncatewords:40}}
-    {% endautoescape %}
-		<div class="clear"></div>
-		<p class="link-read-post"><a href="{{ i.get_absolute_url }}">Смотреть товар</a>
-			<a href="{% url 'update_item' i.pk %}">Редактировать товар</a></p>
-		</li>
-	{% endfor %}
-</ul>
+<table class="table">
+  <thead>
+    <tr>
+      <th class="text-center">Маркетплейс</th>
+      <th class="text-center">Наименование товара</th>
+      <th class="text-center">Бренд</th>
+	  <th class="text-center">Первоначальная цена</th>
+	  <th class="text-center">Текущая цена</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for i in data_item %}
+    <tr class="align-middle" style="height: 40px;">
+      <td class="text-center">{{ i.mtplace.name }}</td>
+		{% if i.name_for_user %}
+		<td class="text-center">{{i.name_for_user}}</td>
+		{% else %}
+		<td class="text-center">{{i.name}}</td>
+		{% endif %}
+      <td class="text-center">{{ i.brand }}</td>
+	  <td class="text-center">{{ i.price }}</td>
+	  {% if i.last_price == -1 %}
+	  <td class="text-center">Товар закончился</td>
+	  {% else %}
+	  <td class="text-center">{{ i.last_price }}</td>
+	  {% endif %}
+	  <td>
+		  <a href="{{ i.get_absolute_url }}" class="btn btn-outline-secondary btn-sm">Смотреть</a>
+		  <a href="{% url 'update_item' i.pk %}" class="btn btn-outline-secondary btn-sm">Редактировать</a>
+	  </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
 {% endblock %}
 
 {% block navigation %}
