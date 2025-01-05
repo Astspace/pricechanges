@@ -3,6 +3,7 @@ import matplotlib.dates as mdates
 from io import BytesIO
 import base64
 from django.utils.safestring import mark_safe
+from django.db.models import QuerySet
 
 
 
@@ -29,7 +30,7 @@ class GraphBase():
 
 
 class GraphPriceChanges(GraphBase):
-    def __init__(self, item_history: list):
+    def __init__(self, item_history: QuerySet):
         self.item_history = item_history
 
     def __generate_plot_graph_price_changes(self):
@@ -56,11 +57,11 @@ class GraphPriceChanges(GraphBase):
 
 
 class GraphActualPrice(GraphBase):
-    def __init__(self, item_history: list):
-        self.item_history = item_history
+    def __init__(self, item_history: QuerySet):
+        self.item_history = item_history.filter(price__gt=-1)
         self.actual_price = item_history.last().price
-        self.min_price = item_history.order_by('price').first().price
-        self.max_price = item_history.order_by('price').last().price
+        self.min_price = self.item_history.order_by('price').first().price
+        self.max_price = self.item_history.order_by('price').last().price
 
     def __generate_plot_graph_actual_price(self):
         fig = plt.figure(figsize=(8, 4), dpi=80)

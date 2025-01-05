@@ -83,7 +83,7 @@ class AddItem(LoginRequiredMixin, DataMixin, CreateView):
 
 class UpdateItem(DataMixin, UpdateView):
     model = Items
-    fields = ['id_item', 'name', 'brand', 'mtplace', 'tags']
+    fields = ['name_for_user', 'brand', 'tags']
     template_name = 'main/add_item.html'
     success_url = reverse_lazy('home')
 

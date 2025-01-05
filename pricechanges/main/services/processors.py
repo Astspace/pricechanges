@@ -68,11 +68,13 @@ def __update_item_for_schedule(item: Items) -> Item | str:
         __update_item_price_database(item_db=item, parse_item=parse_item)
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
-        item.save()
         if parse_item.name == 'Наименование не определено' and -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
+            item.out = True
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
         else:
+            item.out = False
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
+        item.save()
     return parse_item
 
 

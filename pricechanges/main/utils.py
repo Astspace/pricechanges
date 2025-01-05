@@ -1,5 +1,5 @@
 class DataMixin:
-    paginate_by = 3
+    paginate_by = 100
     title = None
     extra_context = {}
     menu_selected = None

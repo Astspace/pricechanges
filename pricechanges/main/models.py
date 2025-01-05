@@ -34,6 +34,7 @@ class Items(models.Model):
     tags = models.ManyToManyField('TagItem', blank=True, related_name='items')
     item_url = models.URLField(max_length=255, blank=True, null=True)
     time_create = models.DateTimeField(auto_now_add=True, verbose_name='Время добавления')
+    out = models.BooleanField(default=False, verbose_name='Закончился')
     active = models.BooleanField(default=True)
 
     objects = models.Manager()
@@ -88,7 +89,7 @@ class TagItem(models.Model):
 
 
 class ItemsChanges(models.Model):
-    item_relations = models.ForeignKey('Items', null=True, blank=True, on_delete=models.CASCADE, related_name='items', verbose_name='Основной товар')
+    item_relations = models.ForeignKey('Items', null=True, blank=True, on_delete=models.CASCADE, related_name='item_changes', verbose_name='Основной товар')
     time_create = models.DateTimeField(auto_now_add=True, verbose_name='Время добавления изменения')
     name = models.CharField(max_length=255, verbose_name='Наименование')
     slug = models.SlugField(max_length=255)

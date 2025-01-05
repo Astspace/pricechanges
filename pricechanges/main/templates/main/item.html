@@ -26,6 +26,7 @@
 {% if graph_actual %}
 {{graph_actual}}
 {% endif %}
+{% if history %}
 <table class="table">
   <thead>
     <tr>
@@ -46,6 +47,9 @@
       <td>{{ i.time_create }}</td>
     </tr>
   {% endfor %}
+  {% else %}
+  <h4>В данный момент история изменения цены товара отсутствует!</h4>
+  {% endif %}
   </tbody>
 </table>
 

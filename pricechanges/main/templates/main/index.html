@@ -14,7 +14,15 @@
   </thead>
   <tbody>
   {% for i in data_item %}
-    <tr class="align-middle" style="height: 40px;">
+  {% if i.last_price == -1 %}
+    <tr class="table-secondary" style="height: 40px;">
+  {% elif i.last_price < i.price %}
+    <tr class="table-success" style="height: 40px;">
+  {% elif i.last_price > i.price %}
+    <tr class="table-danger" style="height: 40px;">
+  {% else %}
+	<tr class="table-default" style="height: 40px;">
+  {% endif %}
       <td class="text-center">{{ i.mtplace.name }}</td>
 		{% if i.name_for_user %}
 		<td class="text-center">{{i.name_for_user}}</td>
@@ -23,8 +31,8 @@
 		{% endif %}
       <td class="text-center">{{ i.brand }}</td>
 	  <td class="text-center">{{ i.price }}</td>
-	  {% if i.last_price == -1 %}
-	  <td class="text-center">Товар закончился</td>
+	  {% if i.out == True %}
+	  <td class="text-center"><b>Товар закончился</b></td>
 	  {% else %}
 	  <td class="text-center">{{ i.last_price }}</td>
 	  {% endif %}
@@ -44,7 +52,7 @@
     <ul>
 		{% if page_obj.has_previous %}
 		<li class="page-num">
-			<a href="?page={{ page_obj.previous_page_number }}">&lt;</a>
+			<a href="?page={{ page_obj.previous_page_number }}"></a>
 		</li>
 		{% endif %}
 
@@ -60,7 +68,7 @@
 
 		{% if page_obj.has_next %}
 		<li class="page-num">
-			<a href="?page={{ page_obj.next_page_number }}">&gt;</a>
+			<a href="?page={{ page_obj.next_page_number }}"></a>
 		</li>
 		{% endif %}
 
