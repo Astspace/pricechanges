@@ -52,6 +52,20 @@ def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
                                 volume=parse_item.volume)
 
 
+def history_for_created_item(created_item: Items) -> None:
+    try:
+        name = created_item.name_for_user if created_item.name_for_user else created_item.name
+        ItemsChanges.objects.create(item_relations=created_item,
+                                    name=name,
+                                    feedbacks=created_item.feedbacks,
+                                    price=created_item.price,
+                                    rating=created_item.rating,
+                                    volume=created_item.volume)
+    except Exception as e:
+        print('Не удалось создать историческую запись для вновь добавленного товара!')
+        print(e)
+
+
 def __get_parse_item(item: Items) -> Item | str:
     if item.mtplace.name == 'Wb':
         parse_item: Item = Wb(id_item=item.id_item).parse()

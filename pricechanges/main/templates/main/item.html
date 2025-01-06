@@ -20,35 +20,56 @@
 {% else %}
 <h2>{{item.name}}</h2><br>
 {% endif %}
+<hr class="border border-primary border-2 opacity-95">
+{% if history|length > 1 %}
 {% if graph %}
 {{graph}}
 {% endif %}
 {% if graph_actual %}
 {{graph_actual}}
 {% endif %}
-{% if history %}
+<strong>
+    Первоначальная цена: {{item.price}} руб.
+</strong>
 <table class="table">
   <thead>
     <tr>
-      <th scope="col">Количество отзывов</th>
-      <th scope="col">Рейтинг</th>
-      <th scope="col">Остатки на складе</th>
-      <th scope="col">Цена</th>
-      <th scope="col">Дата / время обновления</th>
+      <th class="text-center">Количество отзывов</th>
+      <th class="text-center">Рейтинг</th>
+      <th class="text-center">Остатки на складе</th>
+      <th class="text-center">Цена</th>
+      <th class="text-center">Дата / время обновления</th>
     </tr>
   </thead>
   <tbody>
   {% for i in history %}
-    <tr>
-      <td>{{ i.feedbacks }}</td>
-      <td>{{ i.rating }}</td>
-      <td>{{ i.volume }}</td>
-      <td>{{ i.price }}</td>
-      <td>{{ i.time_create }}</td>
+  {% if i.price == -1 %}
+    <tr class="table-secondary" style="height: 40px;">
+  {% elif i.price < item.price %}
+    <tr class="table-success" style="height: 40px;">
+  {% elif i.price > item.price %}
+    <tr class="table-danger" style="height: 40px;">
+  {% else %}
+	<tr class="table-default" style="height: 40px;">
+  {% endif %}
+      <td class="text-center">{{ i.feedbacks }}</td>
+      <td class="text-center">{{ i.rating }}</td>
+      <td class="text-center">{{ i.volume }}</td>
+      {% if i.price == -1 %}
+	  <td class="text-center"><b>Товар закончился</b></td>
+	  {% else %}
+	  <td class="text-center">{{ i.price }}</td>
+	  {% endif %}
+      <td class="text-center">{{ i.time_create }}</td>
     </tr>
   {% endfor %}
   {% else %}
-  <h4>В данный момент история изменения цены товара отсутствует!</h4>
+  <div class="p-3 text-primary-emphasis bg-primary-subtle border border-primary-subtle rounded-3" role="alert">
+  <h4 class="alert-heading">Внимание!</h4>
+  <p>В данный момент история изменения цены товара отсутствует!</p>
+  <hr>
+  <p class="mb-1">Цена на товар не изменилась и составляет {{item.price}} руб.</p>
+</div>
   {% endif %}
   </tbody>
 </table>

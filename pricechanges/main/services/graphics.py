@@ -77,7 +77,7 @@ class GraphActualPrice(GraphBase):
         plt.axhline(y=self.min_price, color='blue', linestyle='dashed', label='Минимальное значение')
         plt.text(0, self.min_price, f'Min: {self.min_price}',
                  ha='center', va='bottom', color='blue', fontsize=10)
-        plt.text(1, self.actual_price, f'Текущая: {self.actual_price}',
+        plt.text(1, self.actual_price, f'{self.actual_price if self.actual_price != -1 else 'товар закончился'}',
                  ha='center', va='bottom', color='black', fontsize=10)
         plt.text(2, self.max_price, f'Max: {self.max_price}',
                  ha='center', va='bottom', color='red', fontsize=10)
