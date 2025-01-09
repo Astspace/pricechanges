@@ -1,4 +1,5 @@
 from django.db.models import QuerySet
+from telebot.types import Message
 from main.models import Items, ItemsChanges, Profile
 from main.services.graphics import GraphPriceChanges, GraphActualPrice
 from main.services.models import Item
@@ -164,7 +165,7 @@ def search_user_by_username(username: str) -> QuerySet | bool:
         return user
 
 
-def binding_site_user_tgbot(message) -> None:
+def binding_site_user_tgbot(message: Message) -> None:
     user = search_user_by_username(message.from_user.text)
     if user:
         create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
@@ -213,6 +214,13 @@ def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id) -> list | bo
         item = Items.actual.get(id_item=mktplace_item_id, owner=user_id)
     except Items.DoesNotExist:
         return False
-    else:
-        item_history = get_list_item_history(item_relations=item.id)
-        return item_history
+    item_history = get_list_item_history(item_relations=item.id)
+    return item_history
+
+
+def get_item_data(item_id: int) -> Items | bool:
+    try:
+        item: Items = Items.actual.get(id_item=item_id)
+    except Items.DoesNotExist:
+        return False
+    return item

@@ -1,5 +1,5 @@
+import telebot
 from django.core.management.base import BaseCommand
-from telebot import TeleBot
 from telebot.types import Message
 import os
 from telebot.types import ReplyKeyboardMarkup, KeyboardButton
@@ -7,7 +7,7 @@ from main.models import Items
 from main.services import processors as pr
 from main.services.processors import get_item_list_tgbot, get_image_graph_actual_price_tgbot
 
-bot = TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
+bot = telebot.TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
 
 button_list_item = KeyboardButton(text="Список товаров")
 button_analysis_item = KeyboardButton(text="Анализ цены товара")
@@ -16,16 +16,28 @@ keyboard.add(button_list_item, button_analysis_item)
 
 
 @bot.message_handler(func=lambda message: message.text == "Список товаров")
-def list_item_tgbot(message: Message) -> None:
+def inline_keyboard_items(message: Message):
     telegram_id = message.from_user.id
     items_list = get_item_list_tgbot(telegram_id)
+    inline_keyboard = telebot.types.InlineKeyboardMarkup()
     if isinstance(items_list, str):
         bot.send_message(message.chat.id, items_list, reply_markup=keyboard)
     else:
-        name_items_str = ''
-        for i in items_list:
-            name_items_str += str(i.name_for_user) + '\n'
-        bot.send_message(message.chat.id, f'Список Ваших товаров:\n\n{name_items_str}', reply_markup=keyboard)
+        for item in items_list:
+            name_item = item.name_for_user if item.name_for_user else item.name
+            inline_button = telebot.types.InlineKeyboardButton(name_item, callback_data=f"{name_item}_{item.id}")
+            inline_keyboard.add(inline_button)
+        bot.send_message(message.chat.id, f'Ваши отслеживаемые товары:', reply_markup=inline_keyboard)
+
+
+@bot.callback_query_handler(func=lambda callback: True)
+def callback_handler(callback):
+    call_item_id = callback.data.split('_')[1]
+    item = pr.get_item_data(int(call_item_id))
+    inline_keyboard_item = telebot.types.InlineKeyboardMarkup()
+    message_item = (f'Наименование товара: {item.name_for_user if item.name_for_user else item.name}\n'
+                    f'Бренд: {item.brand if item.brand else 'отсутствует'}\n')
+    bot.send_message(callback.message.chat.id, "Вы выбрали действие 1.")
 
 
 @bot.message_handler(func=lambda message: message.text == "Анализ цены товара")
