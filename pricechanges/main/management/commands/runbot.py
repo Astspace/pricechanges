@@ -7,12 +7,22 @@ from main.models import Items
 from main.services import processors as pr
 from main.services.processors import get_item_list_tgbot, get_image_graph_actual_price_tgbot
 
+
 bot = telebot.TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
 
 button_list_item = KeyboardButton(text="Список товаров")
-button_analysis_item = KeyboardButton(text="Анализ цены товара")
-keyboard = ReplyKeyboardMarkup(resize_keyboard=True)
-keyboard.add(button_list_item, button_analysis_item)
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(button_list_item)
+
+
+def generate_inline_keyboard_item(item: Items):
+    inline_button_analysis_price = telebot.types.InlineKeyboardButton('Анализ цены товара',callback_data=f"analysis_price^{item}")
+    inline_button_history_item = telebot.types.InlineKeyboardButton('Просмотр истории товара',callback_data=f"history_item^{item}")
+    inline_button_item_goback = telebot.types.InlineKeyboardButton('Вернуться к просмотру списка товаров',callback_data=f"goback_items")
+    inline_button_list = [inline_button_analysis_price, inline_button_history_item, inline_button_item_goback]
+    inline_keyboard_item = telebot.types.InlineKeyboardMarkup()
+    for button in inline_button_list:
+        inline_keyboard_item.row(button)
+    return inline_keyboard_item
 
 
 @bot.message_handler(func=lambda message: message.text == "Список товаров")
@@ -25,36 +35,44 @@ def inline_keyboard_items(message: Message):
     else:
         for item in items_list:
             name_item = item.name_for_user if item.name_for_user else item.name
-            inline_button = telebot.types.InlineKeyboardButton(name_item, callback_data=f"{name_item}_{item.id}")
-            inline_keyboard.add(inline_button)
+            inline_button = telebot.types.InlineKeyboardButton(name_item, callback_data=f"{name_item}//{item}")
+            inline_keyboard.row(inline_button)
         bot.send_message(message.chat.id, f'Ваши отслеживаемые товары:', reply_markup=inline_keyboard)
+
+
+@bot.callback_query_handler(func=lambda callback: '//' in callback.data)
+def callback_handler(callback):
+    item = callback.data.split('//')[1]
+    name_item = callback.data.split('//')[0]
+    message_item = (f'Наименование товара: {name_item}\n'
+                    f'--------------------------\n'
+                    f'Изначальная цена: {item.price}\n'
+                    f'Текущая цена: {item.last_price}\n'
+                    f'--------------------------\n'
+                    f'Маркетплейс: {item.mtplace.name}\n'
+                    f'Бренд: {item.brand if item.brand else 'данные отсутствуют'}\n'
+                    f'Количество отзывов: {item.feedbacks}\n'
+                    f'Рейтинг: {item.rating}\n'
+                    f'Остатки на складе: {item.volume if item.volume else 'данные отсутствуют'}\n\n'
+                    f'[Посмотреть товар на маркетплейсе]({item.item_url})\n')
+    bot.send_message(callback.message.chat.id, message_item, reply_markup=generate_inline_keyboard_item(item), parse_mode="Markdown")
 
 
 @bot.callback_query_handler(func=lambda callback: True)
 def callback_handler(callback):
-    call_item_id = callback.data.split('_')[1]
-    item = pr.get_item_data(int(call_item_id))
-    inline_keyboard_item = telebot.types.InlineKeyboardMarkup()
-    message_item = (f'Наименование товара: {item.name_for_user if item.name_for_user else item.name}\n'
-                    f'Бренд: {item.brand if item.brand else 'отсутствует'}\n')
-    bot.send_message(callback.message.chat.id, "Вы выбрали действие 1.")
-
-
-@bot.message_handler(func=lambda message: message.text == "Анализ цены товара")
-def analysis_price_item(message: Message) -> None:
-    bot.send_message(message.chat.id, 'Введите id отслеживаемого товара с маркетплейса:')
-    bot.register_next_step_handler(message, get_image_price_item)
-
-
-def get_image_price_item(message: Message) -> None:
-    mktplace_item_id = message.text
-    telegram_id = message.from_user.id
-    image = get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
-    if image:
-        with open(image, 'rb') as image:
-            bot.send_photo(message.chat.id, image, reply_markup=keyboard)
-    else:
-        bot.send_message(message.chat.id, 'Товар с указанным id Вы не отслеживаете!', reply_markup=keyboard)
+    item = callback.data.split('^')[1]
+    telegram_id = callback.from_user.id
+    if 'analysis_price' in callback.data:
+        image = get_image_graph_actual_price_tgbot(item.item_id, telegram_id)
+        if image:
+            with open(image, 'rb') as image:
+                bot.send_photo(callback.message.chat.id, image, reply_markup=generate_inline_keyboard_item(item))
+        else:
+            bot.send_message(callback.message.chat.id, 'Товар с указанным id Вы не отслеживаете!', reply_markup=generate_inline_keyboard_item(item))
+    elif 'history_item' in callback.data:
+        item_history = pr.get_list_history_item_tgbot(item.item_id, telegram_id)
+        if item_history:
+            bot.send_message(callback.message.chat.id, 'История товара найдена!', reply_markup=generate_inline_keyboard_item(item))
 
 
 @bot.message_handler()

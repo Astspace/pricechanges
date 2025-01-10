@@ -197,7 +197,7 @@ def get_item_list_tgbot(telegram_id: int) -> QuerySet | str:
         return 'Отслеживаемые товары не найдены!'
 
 
-def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id) -> str | bool:
+def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id: int) -> str | bool:
     list_history = get_list_history_item_tgbot(mktplace_item_id, telegram_id)
     if list_history:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
@@ -218,9 +218,9 @@ def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id) -> list | bo
     return item_history
 
 
-def get_item_data(item_id: int) -> Items | bool:
+def get_item_data(item_id: int) -> Items | str:
     try:
-        item: Items = Items.actual.get(id_item=item_id)
+        item: Items = Items.actual.get(id=item_id)
     except Items.DoesNotExist:
-        return False
+        return 'Не удалось найти товар!'
     return item
