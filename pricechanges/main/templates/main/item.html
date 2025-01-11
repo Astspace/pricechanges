@@ -55,7 +55,7 @@
       <td class="text-center">{{ i.feedbacks }}</td>
       <td class="text-center">{{ i.rating }}</td>
       <td class="text-center">{{ i.volume }}</td>
-      {% if i.price == -1 %}
+      {% if i.price == -1 and i.feedbacks == -1 and i.rating == -1 and i.volume == -1%}
 	  <td class="text-center"><b>Товар закончился</b></td>
 	  {% else %}
 	  <td class="text-center">{{ i.price }}</td>
