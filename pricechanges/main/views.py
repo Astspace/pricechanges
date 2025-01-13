@@ -79,6 +79,7 @@ class AddItem(LoginRequiredMixin, DataMixin, CreateView):
         data_for_create_item = processors.preparation_data_for_create_item(data_for_create_item)
         data_for_create_item.save()
         processors.history_for_created_item(created_item=data_for_create_item)
+        processors.send_add_item_message(created_item=data_for_create_item)
         return super().form_valid(form)
 
 

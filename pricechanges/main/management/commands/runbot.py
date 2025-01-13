@@ -144,25 +144,35 @@ def binding_site_user_tgbot(message: Message) -> None:
 def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items) -> None:
     name_item = item.name_for_user if item.name_for_user else item.name
     bot.send_message(telegram_id,
-                     f'Цена на товар {name_item} изменилась:'
-                     f'старая цена: {last_price}, новая цена: {actual_price}')
+                     f'<b>Цена на товар {name_item} изменилась:</b>\n\n'
+                     f'старая цена: {last_price}\n'
+                     f'новая цена: {actual_price}\n\n'
+                     f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>>', parse_mode='HTML')
 
 
 def price_change_message_item_out(telegram_id: int, last_price: int, item: Items) -> None:
     name_item = item.name_for_user if item.name_for_user else item.name
     bot.send_message(telegram_id,
-                     f'Товар {name_item} закончился.'
-                     f'Последняя  цена: {last_price}')
+                     f'<b>Товар {name_item} закончился.</b>\n\n'
+                     f'Последняя  цена: {last_price}', parse_mode='HTML')
+
+
+def add_item_message(telegram_id: int, created_item: Items) -> None:
+    name_item = created_item.name_for_user if created_item.name_for_user else created_item.name
+    bot.send_message(telegram_id,
+                     f'Добавлен новый товар!\n<b>Наименование: {name_item}</b>\n\n'
+                     f'Стоимость: {created_item.price}\n'
+                     f'<a href="{created_item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
 
 
 class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         bot.enable_save_next_step_handlers(delay=2)
         bot.load_next_step_handlers()
-        while True:
-            try:
-                bot.polling(non_stop=True, timeout=90)
-            except Exception as e:
-                print(e)
-                time.sleep(5)
-                continue
+        #while True:
+            #try:
+        bot.polling(non_stop=True, timeout=90)
+            # except Exception as e:
+            #     print(e)
+            #     time.sleep(5)
+            #     continue

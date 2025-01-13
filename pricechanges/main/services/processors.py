@@ -113,6 +113,20 @@ def send_price_change_message(item: Items, parse_item, last_price: int, item_out
                                      item=item)
             except Exception:
                 print('Не удалось отправить сообщение через телеграм-бота об изменении цены товара.')
+    else:
+        print('Не удалось определить телеграм-профиль пользователя при отправке сообщения об изменении цены товара.')
+
+
+def send_add_item_message(created_item: Items):
+    telegram_id = check_availability_bot(created_item)
+    if telegram_id:
+        from main.management.commands.runbot import add_item_message
+        try:
+            add_item_message(telegram_id, created_item)
+        except Exception as e:
+            print(e, 'Не удалось отправить сообщение через телеграм-бота о добавлении нового товара.')
+    else:
+        print('Не удалось определить телеграм-профиль пользователя при отправке сообщения о добавлении нового товара.')
 
 
 def change_item_price_database() -> None:
