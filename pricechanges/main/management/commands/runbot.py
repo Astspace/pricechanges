@@ -1,11 +1,9 @@
-import time
 import telebot
 from django.core.management.base import BaseCommand
 from telebot.types import Message, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, CallbackQuery
 import os
 from main.models import Items
 from main.services import processors as pr
-from main.services.processors import get_item_list_tgbot, get_image_graph_actual_price_tgbot
 
 
 bot = telebot.TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
@@ -40,7 +38,8 @@ def generate_inline_keyboard_data_item(item_id: int) -> InlineKeyboardMarkup:
     return inline_keyboard_item
 
 
-def check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items: InlineKeyboardMarkup, user_id: int) -> None:
+def check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items: InlineKeyboardMarkup,
+                                                 user_id: int) -> None:
     if isinstance(inline_keyboard_menu_items, str):
         bot.send_message(user_id, inline_keyboard_menu_items, reply_markup=keyboard)
     else:
@@ -66,6 +65,7 @@ def callback_handler(callback: CallbackQuery) -> None:
 
 
 def create_message_item(item: Items, name_item: str) -> str:
+    volume = "Данные по остаткам отсутствуют" if item.volume == -1 else item.volume
     message_item = (f'Наименование товара: <u>{name_item}</u>\n'
                     f'--------------------------\n'
                     f'Изначальная цена: {item.price}\n'
@@ -75,14 +75,15 @@ def create_message_item(item: Items, name_item: str) -> str:
                     f'Бренд: {item.brand if item.brand else 'данные отсутствуют'}\n'
                     f'Количество отзывов: {item.feedbacks}\n'
                     f'Рейтинг: {item.rating}\n'
-                    f'Остатки на складе: {item.volume if item.volume else 'данные отсутствуют'}\n\n'
+                    f'Остатки на складе: {volume}\n\n'
                     f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>\n')
     return message_item
 
+
 @bot.callback_query_handler(func=lambda callback: 'analysis_price^' in callback.data)
-def callback_handler(callback: CallbackQuery):
+def callback_handler(callback: CallbackQuery) -> None:
     item_id, telegram_id, item, mktplace_item_id = get_item_data_from_callback(callback)
-    image = get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
+    image = pr.get_image_graph_actual_price_tgbot(mktplace_item_id, telegram_id)
     if image:
         with open(image, 'rb') as image:
             bot.send_photo(callback.message.chat.id, image, reply_markup=generate_inline_keyboard_data_item(item.id))
@@ -92,12 +93,24 @@ def callback_handler(callback: CallbackQuery):
 
 
 @bot.callback_query_handler(func=lambda callback: 'history_item^' in callback.data)
-def callback_handler(callback: CallbackQuery):
+def callback_handler(callback: CallbackQuery) -> None:
     item_id, telegram_id, item, mktplace_item_id = get_item_data_from_callback(callback)
     item_history = pr.get_list_history_item_tgbot(mktplace_item_id, telegram_id)
+    table_data = [[i.time_create.date(), item.price] for i in item_history]
     if item_history:
-        bot.send_message(callback.message.chat.id, 'История товара найдена!',
-                         reply_markup=generate_inline_keyboard_data_item(item.id))
+        bot.send_message(callback.message.chat.id, f'{generate_table_text(table_data)}',
+                         reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
+
+
+def generate_table_text(table_data: list) -> str:
+    table_data.insert(0, ['Дата изменения', 'Цена\n'])
+    max_lengths = [max(len(str(item)) for item in col) for col in zip(*table_data)]
+    preformatted_table = "```\n"
+    for row in table_data:
+        formatted_row = "  ".join(str(item).ljust(max_lengths[i]) for i, item in enumerate(row))
+        preformatted_table += formatted_row + "\n"
+    preformatted_table += "```"
+    return preformatted_table
 
 
 def get_item_data_from_callback(callback: CallbackQuery) -> tuple:
@@ -144,10 +157,10 @@ def binding_site_user_tgbot(message: Message) -> None:
 def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items) -> None:
     name_item = item.name_for_user if item.name_for_user else item.name
     bot.send_message(telegram_id,
-                     f'<b>Цена на товар {name_item} изменилась:</b>\n\n'
+                     f'<b>Цена на товар "{name_item}" изменилась:</b>\n\n'
                      f'старая цена: {last_price}\n'
                      f'новая цена: {actual_price}\n\n'
-                     f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>>', parse_mode='HTML')
+                     f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
 
 
 def price_change_message_item_out(telegram_id: int, last_price: int, item: Items) -> None:
@@ -169,10 +182,10 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         bot.enable_save_next_step_handlers(delay=2)
         bot.load_next_step_handlers()
-        #while True:
-            #try:
+        # while True:
+        # try:
         bot.polling(non_stop=True, timeout=90)
-            # except Exception as e:
-            #     print(e)
-            #     time.sleep(5)
-            #     continue
+        # except Exception as e:
+        #     print(e)
+        #     time.sleep(5)
+        #     continue

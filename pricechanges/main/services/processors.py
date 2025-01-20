@@ -7,6 +7,7 @@ from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
 from django.contrib.auth import get_user_model
 import time
+from typing import Literal
 
 
 User = get_user_model()
@@ -79,6 +80,7 @@ def __update_item_for_schedule(item: Items) -> Item | str:
     parse_item = __get_parse_item(item)
     if isinstance(parse_item, str):
         return parse_item
+    item_name = item.name_for_user if item.name_for_user else item.name
     if not __check_price_changes(item.last_price, parse_item.price):
         __update_item_price_database(item_db=item, parse_item=parse_item)
         last_price_tgbot = item.last_price
@@ -86,10 +88,14 @@ def __update_item_for_schedule(item: Items) -> Item | str:
         if parse_item.name == 'Наименование не определено' and -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
             item.out = True
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
+            create_change_item_logs(mode='out', item_name=item_name, actual_price=last_price_tgbot)
         else:
             item.out = False
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
+            create_change_item_logs(mode='change', item_name=item_name, actual_price=item.last_price, last_price=last_price_tgbot)
         item.save()
+    else:
+        create_change_item_logs(mode='no_change', item_name=item_name, actual_price=item.last_price)
     return parse_item
 
 
@@ -238,3 +244,21 @@ def get_item_data(item_id: int) -> Items | str:
     except Items.DoesNotExist:
         return 'Не удалось найти товар!'
     return item
+
+
+def create_change_item_logs(mode: Literal['change', 'no_change', 'out'],
+                            item_name: str,
+                            actual_price: int,
+                            last_price: int = None):
+    if mode == 'change':
+        log_text = f'ЦЕНА НА ТОВАР ИЗМЕНИЛАСЬ! Наименование: {item_name}.'\
+                   f'Старая цена: {last_price},'\
+                   f'новая цена: {actual_price}\n'
+    elif mode == 'no_change':
+        log_text = f'Цена на товар не изменилась! Наименование: {item_name}.'\
+                   f'Цена: {actual_price}\n'
+    elif mode == 'out':
+        log_text = f'ТОВАР ЗАКОНЧИЛСЯ! Наименование: {item_name}.'\
+                   f'Цена: {actual_price}\n'
+    with open('main/logs/change_item.txt', 'a') as file:
+        file.write(log_text)
