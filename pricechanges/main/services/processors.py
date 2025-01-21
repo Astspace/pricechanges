@@ -1,4 +1,6 @@
+from datetime import datetime
 from django.db.models import QuerySet
+from loguru import logger
 from telebot.types import Message
 from main.models import Items, ItemsChanges, Profile
 from main.services.graphics import GraphPriceChanges, GraphActualPrice
@@ -9,23 +11,30 @@ from django.contrib.auth import get_user_model
 import time
 from typing import Literal
 
-
 User = get_user_model()
 
 
+@logger.catch
 def preparation_data_for_create_item(data_for_create_item: Items) -> str | Items:
-    marketplace = data_for_create_item.mtplace.name
-    id_item = data_for_create_item.id_item
-    if marketplace == 'Wb':
-        item_obj = Wb(id_item).parse()
-    else:
-        item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
+    try:
+        marketplace = data_for_create_item.mtplace.name
+        id_item = data_for_create_item.id_item
+    except Exception as e:
+        logger.error(f'Ошибка подготовки данных для добавления нового товара {data_for_create_item.name}', e)
+    try:
+        if marketplace == 'Wb':
+            item_obj = Wb(id_item).parse()
+        else:
+            item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
+    except Exception as e:
+        logger.error('Ошибка при парсинге данных товара', e)
     if isinstance(item_obj, str):
         return item_obj
     else:
         return __refresh_data_for_create_item(data_for_create_item, item_obj)
 
 
+@logger.catch
 def __refresh_data_for_create_item(data_for_create_item: Items, item_obj: Item) -> Items:
     data_for_create_item.item_url = item_obj.item_url
     data_for_create_item.name = item_obj.name
@@ -38,6 +47,7 @@ def __refresh_data_for_create_item(data_for_create_item: Items, item_obj: Item) 
     return data_for_create_item
 
 
+@logger.catch
 def __check_price_changes(item_price_database: int, item_price_parse: int) -> bool:
     if item_price_database == item_price_parse:
         return True
@@ -45,6 +55,7 @@ def __check_price_changes(item_price_database: int, item_price_parse: int) -> bo
         return False
 
 
+@logger.catch
 def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
     ItemsChanges.objects.create(item_relations=item_db,
                                 name=parse_item.name,
@@ -54,6 +65,7 @@ def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
                                 volume=parse_item.volume)
 
 
+@logger.catch
 def history_for_created_item(created_item: Items) -> None:
     try:
         name = created_item.name_for_user if created_item.name_for_user else created_item.name
@@ -64,15 +76,17 @@ def history_for_created_item(created_item: Items) -> None:
                                     rating=created_item.rating,
                                     volume=created_item.volume)
     except Exception as e:
-        print('Не удалось создать историческую запись для вновь добавленного товара!')
-        print(e)
+        logger.error('Не удалось создать историческую запись для вновь добавленного товара', e)
 
 
 def __get_parse_item(item: Items) -> Item | str:
-    if item.mtplace.name == 'Wb':
-        parse_item: Item = Wb(id_item=item.id_item).parse()
-    else:
-        parse_item: Item = Ozon(id_item=item.id_item, mode='for_changes').parse()
+    try:
+        if item.mtplace.name == 'Wb':
+            parse_item: Item = Wb(id_item=item.id_item).parse()
+        else:
+            parse_item: Item = Ozon(id_item=item.id_item, mode='for_changes').parse()
+    except Exception as e:
+        logger.error('Не удалось спарсить данные товара при попытке обновления', e)
     return parse_item
 
 
@@ -82,17 +96,22 @@ def __update_item_for_schedule(item: Items) -> Item | str:
         return parse_item
     item_name = item.name_for_user if item.name_for_user else item.name
     if not __check_price_changes(item.last_price, parse_item.price):
-        __update_item_price_database(item_db=item, parse_item=parse_item)
+        try:
+            __update_item_price_database(item_db=item, parse_item=parse_item)
+        except Exception as e:
+            logger.error('Ошибка при создании исторической записи товара', e)
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
-        if parse_item.name == 'Наименование не определено' and -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
+        if parse_item.name == 'Наименование не определено' and \
+                -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
             item.out = True
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
             create_change_item_logs(mode='out', item_name=item_name, actual_price=last_price_tgbot)
         else:
             item.out = False
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
-            create_change_item_logs(mode='change', item_name=item_name, actual_price=item.last_price, last_price=last_price_tgbot)
+            create_change_item_logs(mode='change', item_name=item_name, actual_price=item.last_price,
+                                    last_price=last_price_tgbot)
         item.save()
     else:
         create_change_item_logs(mode='no_change', item_name=item_name, actual_price=item.last_price)
@@ -108,8 +127,8 @@ def send_price_change_message(item: Items, parse_item, last_price: int, item_out
                 price_change_message_item_out(telegram_id=telegram_id,
                                               last_price=last_price,
                                               item=item)
-            except Exception:
-                print('Не удалось отправить сообщение через телеграм-бота о том, что товар закончился.')
+            except Exception as e:
+                logger.error('Не удалось отправить сообщение через tg-бота о том, что товар закончился', e)
         else:
             from main.management.commands.runbot import price_change_message
             try:
@@ -117,37 +136,44 @@ def send_price_change_message(item: Items, parse_item, last_price: int, item_out
                                      last_price=last_price,
                                      actual_price=parse_item.price,
                                      item=item)
-            except Exception:
-                print('Не удалось отправить сообщение через телеграм-бота об изменении цены товара.')
+            except Exception as e:
+                logger.error('Не удалось отправить сообщение через tg-бота об изменении цены товара', e)
     else:
-        print('Не удалось определить телеграм-профиль пользователя при отправке сообщения об изменении цены товара.')
+        logger.error('Не удалось определить tg-профиль пользователя при отправке сообщения об изменении цены товара')
 
 
-def send_add_item_message(created_item: Items):
+def send_add_item_message(created_item: Items) -> None:
     telegram_id = check_availability_bot(created_item)
     if telegram_id:
         from main.management.commands.runbot import add_item_message
         try:
             add_item_message(telegram_id, created_item)
         except Exception as e:
-            print(e, 'Не удалось отправить сообщение через телеграм-бота о добавлении нового товара.')
+            logger.error('Не удалось отправить сообщение через tg-бота о добавлении нового товара', e)
     else:
-        print('Не удалось определить телеграм-профиль пользователя при отправке сообщения о добавлении нового товара.')
+        logger.error('Не удалось определить tg-профиль пользователя при отправке сообщения о добавлении нового товара')
 
 
 def change_item_price_database() -> None:
     while True:
-        items_database = Items.actual.all()
+        try:
+            items_database = Items.actual.all()
+        except Exception as e:
+            logger.error('Ошибка при получения списка товаров для дальнейшего сканирования', e)
         for item in items_database:
             res_update_item = __update_item_for_schedule(item)
             if isinstance(res_update_item, str):
-                print(res_update_item)
+                logger.error(res_update_item)
             time.sleep(5)
 
 
 def get_list_item_history(item_relations: int) -> list:
-    list_history = ItemsChanges.objects.filter(item_relations=item_relations)
-    return list_history
+    try:
+        list_history = ItemsChanges.objects.filter(item_relations=item_relations)
+        return list_history
+    except Exception as e:
+        logger.error('Ошибка при запросе истории товара', e)
+
 
 
 def get_image_graph_price_changes(list_history: list) -> str | bool:
@@ -249,16 +275,17 @@ def get_item_data(item_id: int) -> Items | str:
 def create_change_item_logs(mode: Literal['change', 'no_change', 'out'],
                             item_name: str,
                             actual_price: int,
-                            last_price: int = None):
+                            last_price: int = None) -> None:
+    log_text = f'{datetime.now().replace(microsecond=0)} '
     if mode == 'change':
-        log_text = f'ЦЕНА НА ТОВАР ИЗМЕНИЛАСЬ! Наименование: {item_name}.'\
-                   f'Старая цена: {last_price},'\
-                   f'новая цена: {actual_price}\n'
+        log_text += f'ЦЕНА НА ТОВАР ИЗМЕНИЛАСЬ! Наименование: {item_name}. ' \
+                    f'Старая цена: {last_price}, ' \
+                    f'новая цена: {actual_price}\n'
     elif mode == 'no_change':
-        log_text = f'Цена на товар не изменилась! Наименование: {item_name}.'\
-                   f'Цена: {actual_price}\n'
+        log_text += f'Цена на товар не изменилась! Наименование: {item_name}. ' \
+                    f'Цена: {actual_price}\n'
     elif mode == 'out':
-        log_text = f'ТОВАР ЗАКОНЧИЛСЯ! Наименование: {item_name}.'\
-                   f'Цена: {actual_price}\n'
+        log_text += f'ТОВАР ЗАКОНЧИЛСЯ! Наименование: {item_name}. ' \
+                    f'Цена: {actual_price}\n'
     with open('main/logs/change_item.txt', 'a') as file:
         file.write(log_text)

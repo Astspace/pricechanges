@@ -96,7 +96,7 @@ def callback_handler(callback: CallbackQuery) -> None:
 def callback_handler(callback: CallbackQuery) -> None:
     item_id, telegram_id, item, mktplace_item_id = get_item_data_from_callback(callback)
     item_history = pr.get_list_history_item_tgbot(mktplace_item_id, telegram_id)
-    table_data = [[i.time_create.date(), item.price] for i in item_history]
+    table_data = [[i.time_create.date(), i.price] for i in item_history]
     if item_history:
         bot.send_message(callback.message.chat.id, f'{generate_table_text(table_data)}',
                          reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
