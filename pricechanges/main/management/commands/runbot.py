@@ -1,3 +1,5 @@
+import logging
+from typing import Optional
 import telebot
 from django.core.management.base import BaseCommand
 from telebot.types import Message, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton, CallbackQuery
@@ -170,12 +172,16 @@ def price_change_message_item_out(telegram_id: int, last_price: int, item: Items
                      f'Последняя  цена: {last_price}', parse_mode='HTML')
 
 
-def add_item_message(telegram_id: int, created_item: Items) -> None:
+def add_item_message(telegram_id: int, created_item: Items) -> Optional[str]:
     name_item = created_item.name_for_user if created_item.name_for_user else created_item.name
-    bot.send_message(telegram_id,
-                     f'Добавлен новый товар!\n<b>Наименование: {name_item}</b>\n\n'
-                     f'Стоимость: {created_item.price}\n'
-                     f'<a href="{created_item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
+    try:
+        bot.send_message(telegram_id,
+                         f'Добавлен новый товар!\n<b>Наименование: {name_item}</b>\n\n'
+                         f'Стоимость: {created_item.price}\n'
+                         f'<a href="{created_item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
+    except Exception:
+        logging.exception(f'Не уддалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,'
+                          f'наименование: {name_item}')
 
 
 class Command(BaseCommand):

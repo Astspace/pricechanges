@@ -9,33 +9,25 @@ from main.services.parser import ItemParserWb as Wb
 from main.services.parser import ItemParserOzon as Ozon
 from django.contrib.auth import get_user_model
 import time
-from typing import Literal
+from typing import Literal, Optional
 
 User = get_user_model()
 
 
-@logger.catch
 def preparation_data_for_create_item(data_for_create_item: Items) -> str | Items:
-    try:
-        marketplace = data_for_create_item.mtplace.name
-        id_item = data_for_create_item.id_item
-    except Exception as e:
-        logger.error(f'Ошибка подготовки данных для добавления нового товара {data_for_create_item.name}', e)
-    try:
-        if marketplace == 'Wb':
-            item_obj = Wb(id_item).parse()
-        else:
-            item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
-    except Exception as e:
-        logger.error('Ошибка при парсинге данных товара', e)
+    marketplace = data_for_create_item.mtplace.name
+    id_item = data_for_create_item.id_item
+    if marketplace == 'Wb':
+        item_obj = Wb(id_item).parse()
+    else:
+        item_obj = Ozon(id_item=id_item, mode='for_changes').parse()
     if isinstance(item_obj, str):
         return item_obj
-    else:
-        return __refresh_data_for_create_item(data_for_create_item, item_obj)
+    return __get_refresh_data_for_create_item(data_for_create_item, item_obj)
 
 
 @logger.catch
-def __refresh_data_for_create_item(data_for_create_item: Items, item_obj: Item) -> Items:
+def __get_refresh_data_for_create_item(data_for_create_item: Items, item_obj: Item) -> str | Items:
     data_for_create_item.item_url = item_obj.item_url
     data_for_create_item.name = item_obj.name
     data_for_create_item.rating = item_obj.rating
@@ -55,38 +47,40 @@ def __check_price_changes(item_price_database: int, item_price_parse: int) -> bo
         return False
 
 
-@logger.catch
-def __update_item_price_database(item_db: Items, parse_item: Item) -> None:
-    ItemsChanges.objects.create(item_relations=item_db,
-                                name=parse_item.name,
-                                feedbacks=parse_item.feedbacks,
-                                price=parse_item.price,
-                                rating=parse_item.rating,
-                                volume=parse_item.volume)
-
-
-@logger.catch
-def history_for_created_item(created_item: Items) -> None:
+def __update_item_price_database(item_db: Items, parse_item: Item) -> Optional[str]:
     try:
-        name = created_item.name_for_user if created_item.name_for_user else created_item.name
+        ItemsChanges.objects.create(item_relations=item_db,
+                                    name=parse_item.name,
+                                    feedbacks=parse_item.feedbacks,
+                                    price=parse_item.price,
+                                    rating=parse_item.rating,
+                                    volume=parse_item.volume)
+    except Exception:
+        err_msg = 'Не удалось создать новую запись в истории изменения товара (новый товар)'
+        logger.exception(err_msg)
+        return err_msg
+
+
+def history_for_created_item(created_item: Items) -> Optional[str]:
+    name = created_item.name_for_user if created_item.name_for_user else created_item.name
+    try:
         ItemsChanges.objects.create(item_relations=created_item,
                                     name=name,
                                     feedbacks=created_item.feedbacks,
                                     price=created_item.price,
                                     rating=created_item.rating,
                                     volume=created_item.volume)
-    except Exception as e:
-        logger.error('Не удалось создать историческую запись для вновь добавленного товара', e)
+    except Exception:
+        err_msg = 'Не удалось создать новую запись в истории изменения товара (существующий товар)'
+        logger.exception(err_msg)
+        return err_msg
 
 
 def __get_parse_item(item: Items) -> Item | str:
-    try:
-        if item.mtplace.name == 'Wb':
-            parse_item: Item = Wb(id_item=item.id_item).parse()
-        else:
-            parse_item: Item = Ozon(id_item=item.id_item, mode='for_changes').parse()
-    except Exception as e:
-        logger.error('Не удалось спарсить данные товара при попытке обновления', e)
+    if item.mtplace.name == 'Wb':
+        parse_item: Item = Wb(id_item=item.id_item).parse()
+    else:
+        parse_item: Item = Ozon(id_item=item.id_item, mode='for_changes').parse()
     return parse_item
 
 
@@ -96,10 +90,9 @@ def __update_item_for_schedule(item: Items) -> Item | str:
         return parse_item
     item_name = item.name_for_user if item.name_for_user else item.name
     if not __check_price_changes(item.last_price, parse_item.price):
-        try:
-            __update_item_price_database(item_db=item, parse_item=parse_item)
-        except Exception as e:
-            logger.error('Ошибка при создании исторической записи товара', e)
+        res_update = __update_item_price_database(item_db=item, parse_item=parse_item)
+        if isinstance(res_update, str):
+            return res_update
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
         if parse_item.name == 'Наименование не определено' and \
@@ -112,7 +105,10 @@ def __update_item_for_schedule(item: Items) -> Item | str:
             send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
             create_change_item_logs(mode='change', item_name=item_name, actual_price=item.last_price,
                                     last_price=last_price_tgbot)
-        item.save()
+        try:
+            item.save()
+        except Exception:
+            logger.exception('Не удалось изменить последнню цену товара')
     else:
         create_change_item_logs(mode='no_change', item_name=item_name, actual_price=item.last_price)
     return parse_item
@@ -142,46 +138,47 @@ def send_price_change_message(item: Items, parse_item, last_price: int, item_out
         logger.error('Не удалось определить tg-профиль пользователя при отправке сообщения об изменении цены товара')
 
 
-def send_add_item_message(created_item: Items) -> None:
+def send_add_item_message(created_item: Items) -> Optional[str]:
     telegram_id = check_availability_bot(created_item)
-    if telegram_id:
-        from main.management.commands.runbot import add_item_message
-        try:
-            add_item_message(telegram_id, created_item)
-        except Exception as e:
-            logger.error('Не удалось отправить сообщение через tg-бота о добавлении нового товара', e)
-    else:
-        logger.error('Не удалось определить tg-профиль пользователя при отправке сообщения о добавлении нового товара')
+    if isinstance(telegram_id, str):
+        return telegram_id
+    from main.management.commands.runbot import add_item_message
+    add_item_message(telegram_id, created_item)
 
 
-def change_item_price_database() -> None:
+def change_item_price_database() -> Optional[str]:
     while True:
         try:
             items_database = Items.actual.all()
-        except Exception as e:
-            logger.error('Ошибка при получения списка товаров для дальнейшего сканирования', e)
+        except Exception:
+            err_msg = 'Ошибка при получения списка товаров для дальнейшего сканирования'
+            logger.exception(err_msg)
+            return err_msg
         for item in items_database:
             res_update_item = __update_item_for_schedule(item)
             if isinstance(res_update_item, str):
-                logger.error(res_update_item)
+                logger.exception(res_update_item)
             time.sleep(5)
 
 
-def get_list_item_history(item_relations: int) -> list:
+def get_list_item_history(item_relations: int) -> list | str:
     try:
         list_history = ItemsChanges.objects.filter(item_relations=item_relations)
         return list_history
-    except Exception as e:
-        logger.error('Ошибка при запросе истории товара', e)
+    except Exception:
+        err_msg = f'Ошибка при попытке получить историю изменения товара (id = {item_relations})'
+        logger.exception(err_msg)
+        return err_msg
 
 
-
-def get_image_graph_price_changes(list_history: list) -> str | bool:
-    if list_history:
+def get_image_graph_price_changes(list_history: QuerySet) -> str:
+    if isinstance(list_history, QuerySet):
         graph_item_history = GraphPriceChanges(list_history).generate_image_graph_price_changes()
         return graph_item_history
     else:
-        return False
+        err_msg = 'Ошибка получения данных об истории изменения товара'
+        logger.exception(err_msg)
+        return err_msg
 
 
 def get_image_graph_actual_price(list_history: list) -> str | bool:
@@ -221,12 +218,14 @@ def create_user_tgbot(user_id: int, telegram_id: int) -> None:
     Profile.objects.create(telegram_id=telegram_id, user_relations_id=user_id)
 
 
-def check_availability_bot(item: Items) -> int | bool:
+def check_availability_bot(item: Items) -> int | str:
     user_id = item.owner.id
     try:
         profile = Profile.objects.get(user_relations_id=user_id)
     except Profile.DoesNotExist:
-        return False
+        err_msg = 'Не удалось найти профиль пользователя по товару'
+        logger.exception(err_msg)
+        return err_msg
     else:
         return profile.telegram_id
 
