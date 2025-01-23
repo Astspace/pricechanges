@@ -180,8 +180,11 @@ def add_item_message(telegram_id: int, created_item: Items) -> Optional[str]:
                          f'Стоимость: {created_item.price}\n'
                          f'<a href="{created_item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
     except Exception:
-        logging.exception(f'Не уддалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,'
-                          f'наименование: {name_item}')
+        err_msg = f'Не уддалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,' \
+                  f'наименование: {name_item}'
+        logging.exception(err_msg)
+        return err_msg
+
 
 
 class Command(BaseCommand):

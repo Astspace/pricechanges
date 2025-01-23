@@ -1,3 +1,5 @@
+import logging
+
 import requests
 from selenium import webdriver
 from selenium_stealth import stealth
@@ -6,22 +8,23 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 import time
 from bs4 import BeautifulSoup
-import os.path
 from main.services.models import Item
 
 
 class ItemParserBase:
-    def __init__(self, id_item: int, mode: str = 'main'):
+    def __init__(self, id_item: int):
         self.id_item = id_item
         self.item_url = None
-        self.mode = mode
 
-    def _create_item_obj(self, item_data_dict: dict) -> str | Item:
+    @staticmethod
+    def _create_item_obj(item_data_dict: dict) -> str | Item:
         try:
             item_obj = Item.model_validate(item_data_dict)
+            return item_obj
         except Exception:
-            return 'Ошибка обработки данных товара с маркетплейса! Обратитесь к разработчику.'
-        return item_obj
+            err_msg = 'Ошибка обработки данных товара с маркетплейса.'
+            logging.exception(err_msg)
+            return err_msg
 
 
 class ItemParserWb(ItemParserBase):
@@ -30,12 +33,14 @@ class ItemParserWb(ItemParserBase):
             'dest': '-1257786',
             'nm': self.id_item,
         }
-        response = requests.get('https://card.wb.ru/cards/v2/detail', params=params)
-        response_json = response.json()["data"]["products"][0]
-        if response_json:
+        try:
+            response = requests.get('https://card.wb.ru/cards/v2/detail', params=params)
+            response_json = response.json()["data"]["products"][0]
             return self.__get_item_dict(response_json)
-        else:
-            return 'Не удалось получить данные товара с Wb. Проверьте правильность введенного id товара!'
+        except Exception:
+            err_msg = 'Не удалось получить данные товара с Wb. Проверьте правильность введенного id товара!'
+            logging.exception(err_msg)
+            return err_msg
 
     def __get_item_dict(self, response_json: dict) -> str | Item:
         try:
@@ -174,15 +179,7 @@ class ItemParserOzon(ItemParserBase):
         return item_data_dict
 
     def parse(self) -> Item | str:
-        if self.mode == 'main':
-            if not os.path.exists('main/services/page.html'):
-                with open('main/services/page.html', 'w', encoding='utf-8') as page:
-                    page.write(self.__get_pretty_soup_item_page(self.id_item))
-            with open('main/services/page.html', 'r', encoding='utf-8') as page:
-                item_page_soup = BeautifulSoup(page, 'lxml')
-            item_dict = self.__get_item_dict(item_page_soup, self.id_item)
-        else:
-            pretty_soup_item_page = self.__get_pretty_soup_item_page(self.id_item)
-            item_page_soup = BeautifulSoup(pretty_soup_item_page, 'lxml')
-            item_dict = self.__get_item_dict(item_page_soup, self.id_item)
+        pretty_soup_item_page = self.__get_pretty_soup_item_page(self.id_item)
+        item_page_soup = BeautifulSoup(pretty_soup_item_page, 'lxml')
+        item_dict = self.__get_item_dict(item_page_soup, self.id_item)
         return self._create_item_obj(item_dict)
