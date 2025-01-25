@@ -1,30 +1,41 @@
+from typing import List, Any
+
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from io import BytesIO
 import base64
 from django.utils.safestring import mark_safe
 from django.db.models import QuerySet
-
+from loguru import logger
 
 
 class GraphBase():
+    @logger.catch
     def _get_time_creates_list(self) -> list:
         list_time_creates = [i.time_create.date() for i in self.item_history]
         return list_time_creates
 
+    @logger.catch
     def _get_prices_list(self) -> list:
         list_prices = [i.price for i in self.item_history]
         return list_prices
 
-    def _convert_plot_to_base64_encoded_image(self, ready_plt) -> str:
-        buffer = BytesIO()
-        ready_plt.savefig(buffer, format='png', bbox_inches='tight')
-        buffer.seek(0)
-        img_str = base64.b64encode(buffer.read()).decode('utf-8')
-        return img_str
+    def _convert_plot_to_base64_encoded_image(self, ready_plt) -> list[str] | str:
+        try:
+            buffer = BytesIO()
+            ready_plt.savefig(buffer, format='png', bbox_inches='tight')
+            buffer.seek(0)
+            img_str = base64.b64encode(buffer.read()).decode('utf-8')
+            return img_str
+        except Exception:
+            err_msg = 'Ошибка преобразования графика в изображение'
+            logger.exception(err_msg)
+            return [err_msg]
 
-    def generate_image_graph(self, ready_plt) -> str:
+    def generate_image_graph(self, ready_plt) -> list[str] | str:
         img_str = self._convert_plot_to_base64_encoded_image(ready_plt)
+        if isinstance(img_str, list):
+            return img_str
         graph = mark_safe(f'<img src="data:image/png;base64,{img_str}">')
         return graph
 
@@ -33,16 +44,22 @@ class GraphPriceChanges(GraphBase):
     def __init__(self, item_history: QuerySet):
         self.item_history = item_history
 
-    def __generate_plot_graph_price_changes(self):
-        fig = plt.figure(figsize=(8, 4), dpi=80)
-        fig.suptitle('История изменения цены товара')
-        list_prices = self._get_prices_list()
-        list_time_creates = self._get_time_creates_list()
-        plt.plot(list_time_creates, list_prices, 'go--', linewidth=2, markersize=12)
-        plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%y'))
-        return self.__display_graph_price_changes(plt)
+    def __generate_plot_graph_price_changes(self) -> plt | str:
+        try:
+            fig = plt.figure(figsize=(8, 4), dpi=80)
+            fig.suptitle('История изменения цены товара')
+            list_prices = self._get_prices_list()
+            list_time_creates = self._get_time_creates_list()
+            plt.plot(list_time_creates, list_prices, 'go--', linewidth=2, markersize=12)
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%d-%m-%y'))
+            return self.__display_graph_price_changes(plt)
+        except Exception:
+            err_msg = 'Ошибка формирования графика изменения цены товара'
+            logger.exception(err_msg)
+            return err_msg
 
-    def __display_graph_price_changes(self, plt):
+    @logger.catch
+    def __display_graph_price_changes(self, plt) -> plt:
         plt.ylabel('Цена')
         plt.xlabel('Дата')
         plt.minorticks_on()
@@ -50,20 +67,22 @@ class GraphPriceChanges(GraphBase):
         plt.xticks(rotation=45)
         return plt
 
-    def generate_image_graph_price_changes(self) -> str:
+    def generate_image_graph_price_changes(self) -> list[str] | str:
         plot_graph_price_changes = self.__generate_plot_graph_price_changes()
+        if isinstance(plot_graph_price_changes, str):
+            return [plot_graph_price_changes]
         image_graph = self.generate_image_graph(plot_graph_price_changes)
         return image_graph
 
 
 class GraphActualPrice(GraphBase):
     def __init__(self, item_history: QuerySet):
-        self.item_history = item_history.filter(price__gt=-1)
-        self.actual_price = item_history.last().price
-        self.min_price = self.item_history.order_by('price').first().price
-        self.max_price = self.item_history.order_by('price').last().price
+            self.item_history = item_history.filter(price__gt=-1)
+            self.actual_price = item_history.last().price
+            self.min_price = self.item_history.order_by('price').first().price
+            self.max_price = self.item_history.order_by('price').last().price
 
-    def __generate_plot_graph_actual_price(self):
+    def __generate_plot_graph_actual_price(self) -> plt | str:
         fig = plt.figure(figsize=(8, 4), dpi=80)
         fig.suptitle('Сравнение минимальной, текущей и максимальной цен товара')
         category = ['Min', 'Текущая цена', 'Max']
@@ -72,7 +91,7 @@ class GraphActualPrice(GraphBase):
         plt.bar(category, values, color=colors, width=1)
         return self.__display_graph_actual_price(plt)
 
-    def __display_graph_actual_price(self, plt):
+    def __display_graph_actual_price(self, plt) -> plt:
         plt.axhline(y=self.max_price, color='red', linestyle='dashed', label='Максимальное значение')
         plt.axhline(y=self.min_price, color='blue', linestyle='dashed', label='Минимальное значение')
         plt.text(0, self.min_price, f'Min: {self.min_price}',

@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List
 
 import requests
 from loguru import logger
@@ -98,22 +98,22 @@ class ItemParserOzon(ItemParserBase):
             logger.exception(err_msg)
             return err_msg
 
-    def __get_item_page(self, id_item: int) -> str:
+    def __get_item_page(self, id_item: int) -> list[str] | str:
         driver = self.__init_webdriver()
         if isinstance(driver, str):
-            return driver
+            return [driver]
         try:
             driver.get('https://www.ozon.ru/')
         except Exception:
             err_msg = 'Ошибка при попытке взаимодействия с главной страницей Ozon.'
             logger.exception(err_msg)
-            return err_msg
+            return [err_msg]
         finally:
             driver.quit()
         time.sleep(10)
         driver = self.__search_item(driver, id_item)
         if isinstance(driver, str):
-            return driver
+            return [driver]
         self.item_url = driver.current_url
         item_page = driver.page_source
         driver.quit()
@@ -213,6 +213,10 @@ class ItemParserOzon(ItemParserBase):
 
     def parse(self) -> Item | str:
         pretty_soup_item_page = self.__get_item_page(self.id_item)
+        if isinstance(pretty_soup_item_page, list):
+            return str(pretty_soup_item_page[0])
         item_page_soup = BeautifulSoup(pretty_soup_item_page, 'lxml')
         item_dict = self.__get_item_dict(item_page_soup, self.id_item)
+        if isinstance(item_dict, str):
+            return item_dict
         return self._create_item_obj(item_dict)
