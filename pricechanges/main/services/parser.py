@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 import requests
 from loguru import logger
 from selenium import webdriver

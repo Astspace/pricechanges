@@ -9,7 +9,7 @@ from django.db.models import QuerySet
 from loguru import logger
 
 
-class GraphBase():
+class GraphBase:
     @logger.catch
     def _get_time_creates_list(self) -> list:
         list_time_creates = [i.time_create.date() for i in self.item_history]
@@ -20,7 +20,8 @@ class GraphBase():
         list_prices = [i.price for i in self.item_history]
         return list_prices
 
-    def _convert_plot_to_base64_encoded_image(self, ready_plt) -> list[str] | str:
+    @classmethod
+    def _convert_plot_to_base64_encoded_image(cls, ready_plt) -> list[str] | str:
         try:
             buffer = BytesIO()
             ready_plt.savefig(buffer, format='png', bbox_inches='tight')
@@ -77,20 +78,26 @@ class GraphPriceChanges(GraphBase):
 
 class GraphActualPrice(GraphBase):
     def __init__(self, item_history: QuerySet):
-            self.item_history = item_history.filter(price__gt=-1)
-            self.actual_price = item_history.last().price
-            self.min_price = self.item_history.order_by('price').first().price
-            self.max_price = self.item_history.order_by('price').last().price
+        self.item_history = item_history.filter(price__gt=-1)
+        self.actual_price = item_history.last().price
+        self.min_price = self.item_history.order_by('price').first().price
+        self.max_price = self.item_history.order_by('price').last().price
 
     def __generate_plot_graph_actual_price(self) -> plt | str:
-        fig = plt.figure(figsize=(8, 4), dpi=80)
-        fig.suptitle('Сравнение минимальной, текущей и максимальной цен товара')
-        category = ['Min', 'Текущая цена', 'Max']
-        values = [self.min_price, self.actual_price, self.max_price]
-        colors = ['#00BFFF', '#7FFFD4', '#CD5C5C']
-        plt.bar(category, values, color=colors, width=1)
-        return self.__display_graph_actual_price(plt)
+        try:
+            fig = plt.figure(figsize=(8, 4), dpi=80)
+            fig.suptitle('Сравнение минимальной, текущей и максимальной цен товара')
+            category = ['Min', 'Текущая цена', 'Max']
+            values = [self.min_price, self.actual_price, self.max_price]
+            colors = ['#00BFFF', '#7FFFD4', '#CD5C5C']
+            plt.bar(category, values, color=colors, width=1)
+            return self.__display_graph_actual_price(plt)
+        except Exception:
+            err_msg = 'Ошибка формирования графика анализа актуальной цены товара'
+            logger.exception(err_msg)
+            return err_msg
 
+    @logger.catch
     def __display_graph_actual_price(self, plt) -> plt:
         plt.axhline(y=self.max_price, color='red', linestyle='dashed', label='Максимальное значение')
         plt.axhline(y=self.min_price, color='blue', linestyle='dashed', label='Минимальное значение')
@@ -103,18 +110,24 @@ class GraphActualPrice(GraphBase):
         plt.ylabel('Цена')
         return plt
 
-    def generate_image_graph_actual_prices(self) -> str:
+    def generate_image_graph_actual_prices(self) -> list[str] | str:
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
+        if isinstance(plot_graph_actual_prices, str):
+            return plot_graph_actual_prices
         image_graph = self.generate_image_graph(plot_graph_actual_prices)
         return image_graph
 
-    def generate_image_graph_actual_prices_tgbot(self) -> str:
+    def generate_image_graph_actual_prices_tgbot(self) -> list[str] | str:
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
+        if isinstance(plot_graph_actual_prices, str):
+            return plot_graph_actual_prices
         image_graph = self._convert_plot_to_base64_encoded_image(plot_graph_actual_prices)
         return image_graph
 
-    def save_image_graph_actual_prices_tgbot(self, user_name: str) -> str:
+    def save_image_graph_actual_prices_tgbot(self, user_name: str) -> list[str] | str:
         image_graph = self.generate_image_graph_actual_prices_tgbot()
+        if isinstance(image_graph, list):
+            return image_graph
         path = f'main/services/image_{user_name}.jpg'
         image_data = base64.b64decode(image_graph)
         with open(path, 'wb') as image:

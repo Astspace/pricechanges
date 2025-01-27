@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 from typing import Optional
 import telebot
 from django.core.management.base import BaseCommand
@@ -7,13 +7,16 @@ import os
 from main.models import Items
 from main.services import processors as pr
 
-
-bot = telebot.TeleBot(os.environ.get('BOT_TOKEN_KEY'), threaded=False)
+bot_token = os.environ.get('BOT_TOKEN_KEY')
+if bot_token is None:
+    logger.exception("Переменная BOT_TOKEN_KEY не определена в переменных окружения")
+bot = telebot.TeleBot(bot_token, threaded=False)
 
 button_list_item = KeyboardButton(text="Список товаров")
 keyboard = ReplyKeyboardMarkup(resize_keyboard=True).add(button_list_item)
 
 
+@logger.catch
 def generate_inline_keyboard_menu_items(telegram_id: int) -> InlineKeyboardMarkup | str:
     items_list = pr.get_item_list_tgbot(telegram_id)
     if isinstance(items_list, str):
@@ -26,6 +29,7 @@ def generate_inline_keyboard_menu_items(telegram_id: int) -> InlineKeyboardMarku
     return inline_keyboard
 
 
+@logger.catch
 def generate_inline_keyboard_data_item(item_id: int) -> InlineKeyboardMarkup:
     inline_button_analysis_price = telebot.types.InlineKeyboardButton('Анализ цены товара',
                                                                       callback_data=f"analysis_price^{item_id}")
@@ -41,18 +45,27 @@ def generate_inline_keyboard_data_item(item_id: int) -> InlineKeyboardMarkup:
 
 
 def check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items: InlineKeyboardMarkup,
-                                                 user_id: int) -> None:
-    if isinstance(inline_keyboard_menu_items, str):
-        bot.send_message(user_id, inline_keyboard_menu_items, reply_markup=keyboard)
-    else:
-        bot.send_message(user_id, f'Ваши отслеживаемые товары:', reply_markup=inline_keyboard_menu_items)
+                                                 user_id: int) -> Optional[str]:
+    try:
+        if isinstance(inline_keyboard_menu_items, str):
+            bot.send_message(user_id, inline_keyboard_menu_items, reply_markup=keyboard)
+        else:
+            bot.send_message(user_id, f'Ваши отслеживаемые товары:', reply_markup=inline_keyboard_menu_items)
+    except Exception:
+        err_msg = 'Ошибка при отправке сообщения tg-ботом (информация по отслеживаемым товарам)'
+        logger.exception(err_msg)
+        return err_msg
 
 
 @bot.message_handler(func=lambda message: message.text == "Список товаров")
-def inline_keyboard_items(message: Message) -> None:
+def inline_keyboard_items(message: Message) -> Optional[str]:
     telegram_id = message.from_user.id
     inline_keyboard_menu_items = generate_inline_keyboard_menu_items(telegram_id)
-    check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items, telegram_id)
+    if isinstance(inline_keyboard_menu_items, str):
+        return inline_keyboard_menu_items
+    send_message_items_menu = check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items, telegram_id)
+    if send_message_items_menu:
+        return send_message_items_menu
 
 
 @bot.callback_query_handler(func=lambda callback: '//' in callback.data)
@@ -60,26 +73,34 @@ def callback_handler(callback: CallbackQuery) -> None:
     id_item = callback.data.split('//')[1]
     name_item = callback.data.split('//')[0]
     item = pr.get_item_data(id_item)
-    bot.send_message(callback.message.chat.id,
-                     create_message_item(item, name_item),
-                     reply_markup=generate_inline_keyboard_data_item(item.id),
-                     parse_mode="HTML")
+    try:
+        bot.send_message(callback.message.chat.id,
+                         create_message_item(item, name_item),
+                         reply_markup=generate_inline_keyboard_data_item(item.id),
+                         parse_mode="HTML")
+    except Exception:
+        logger.exception('Ошибка при отправке сообщения tg-ботом')
 
 
 def create_message_item(item: Items, name_item: str) -> str:
-    volume = "Данные по остаткам отсутствуют" if item.volume == -1 else item.volume
-    message_item = (f'Наименование товара: <u>{name_item}</u>\n'
-                    f'--------------------------\n'
-                    f'Изначальная цена: {item.price}\n'
-                    f'Текущая цена: {'<b>Товар закончился!</b>' if item.out else item.last_price}\n'
-                    f'--------------------------\n'
-                    f'Маркетплейс: {item.mtplace.name}\n'
-                    f'Бренд: {item.brand if item.brand else 'данные отсутствуют'}\n'
-                    f'Количество отзывов: {item.feedbacks}\n'
-                    f'Рейтинг: {item.rating}\n'
-                    f'Остатки на складе: {volume}\n\n'
-                    f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>\n')
-    return message_item
+    try:
+        volume = "Данные по остаткам отсутствуют" if item.volume == -1 else item.volume
+        message_item = (f'Наименование товара: <u>{name_item}</u>\n'
+                        f'--------------------------\n'
+                        f'Изначальная цена: {item.price}\n'
+                        f'Текущая цена: {'<b>Товар закончился!</b>' if item.out else item.last_price}\n'
+                        f'--------------------------\n'
+                        f'Маркетплейс: {item.mtplace.name}\n'
+                        f'Бренд: {item.brand if item.brand else 'данные отсутствуют'}\n'
+                        f'Количество отзывов: {item.feedbacks}\n'
+                        f'Рейтинг: {item.rating}\n'
+                        f'Остатки на складе: {volume}\n\n'
+                        f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>\n')
+        return message_item
+    except Exception:
+        err_msg = 'Ошибка при формировании сообщения о карточке товара для tg-бота'
+        logger.exception(err_msg)
+        return err_msg
 
 
 @bot.callback_query_handler(func=lambda callback: 'analysis_price^' in callback.data)
@@ -96,31 +117,52 @@ def callback_handler(callback: CallbackQuery) -> None:
 
 @bot.callback_query_handler(func=lambda callback: 'history_item^' in callback.data)
 def callback_handler(callback: CallbackQuery) -> None:
-    item_id, telegram_id, item, mktplace_item_id = get_item_data_from_callback(callback)
-    item_history = pr.get_list_history_item_tgbot(mktplace_item_id, telegram_id)
-    table_data = [[i.time_create.date(), i.price] for i in item_history]
-    if item_history:
-        bot.send_message(callback.message.chat.id, f'{generate_table_text(table_data)}',
-                         reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
+    item_data_from_callback = get_item_data_from_callback(callback)
+    if isinstance(item_data_from_callback, str):
+        message = item_data_from_callback #error
+        logger.exception(message)
+    else:
+        item_id, telegram_id, item, mktplace_item_id = item_data_from_callback
+        item_history = pr.get_list_history_item_tgbot(mktplace_item_id, telegram_id)
+        if isinstance(item_history, str):
+            message = item_history
+            logger.exception(message)
+        else:
+            table_data = [[i.time_create.date(), i.price] for i in item_history]
+            preformatted_table = generate_table_text(table_data)
+            if isinstance(preformatted_table, list):
+                message = str(preformatted_table[0])
+            bot.send_message(callback.message.chat.id, message,
+                             reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
 
 
-def generate_table_text(table_data: list) -> str:
-    table_data.insert(0, ['Дата изменения', 'Цена\n'])
-    max_lengths = [max(len(str(item)) for item in col) for col in zip(*table_data)]
-    preformatted_table = "```\n"
-    for row in table_data:
-        formatted_row = "  ".join(str(item).ljust(max_lengths[i]) for i, item in enumerate(row))
-        preformatted_table += formatted_row + "\n"
-    preformatted_table += "```"
-    return preformatted_table
+def generate_table_text(table_data: list) -> list[str] | str:
+    try:
+        table_data.insert(0, ['Дата изменения', 'Цена\n'])
+        max_lengths = [max(len(str(item)) for item in col) for col in zip(*table_data)]
+        preformatted_table = "```\n"
+        for row in table_data:
+            formatted_row = "  ".join(str(item).ljust(max_lengths[i]) for i, item in enumerate(row))
+            preformatted_table += formatted_row + "\n"
+        preformatted_table += "```"
+        return preformatted_table
+    except Exception:
+        err_msg = 'Ошибка при формировании таблицы для отображения истории товара'
+        logger.exception(err_msg)
+        return [err_msg]
 
 
-def get_item_data_from_callback(callback: CallbackQuery) -> tuple:
-    item_id = callback.data.split('^')[1]
-    telegram_id = callback.from_user.id
-    item = pr.get_item_data(item_id)
-    mktplace_item_id = item.id_item
-    return item_id, telegram_id, item, mktplace_item_id
+def get_item_data_from_callback(callback: CallbackQuery) -> tuple | str:
+    try:
+        item_id = callback.data.split('^')[1]
+        telegram_id = callback.from_user.id
+        item = pr.get_item_data(item_id)
+        mktplace_item_id = item.id_item
+        return item_id, telegram_id, item, mktplace_item_id
+    except Exception:
+        err_msg = 'Ошибка обработки данных о товаре'
+        logger.exception(err_msg)
+        return err_msg
 
 
 @bot.callback_query_handler(func=lambda callback: True)
@@ -182,9 +224,8 @@ def add_item_message(telegram_id: int, created_item: Items) -> Optional[str]:
     except Exception:
         err_msg = f'Не уддалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,' \
                   f'наименование: {name_item}'
-        logging.exception(err_msg)
+        logger.exception(err_msg)
         return err_msg
-
 
 
 class Command(BaseCommand):
