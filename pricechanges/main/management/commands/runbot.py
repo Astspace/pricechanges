@@ -1,3 +1,4 @@
+from django.db.models import QuerySet
 from loguru import logger
 from typing import Optional
 import telebot
@@ -44,7 +45,7 @@ def generate_inline_keyboard_data_item(item_id: int) -> InlineKeyboardMarkup:
     return inline_keyboard_item
 
 
-def check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items: InlineKeyboardMarkup,
+def check_inline_keyboard_menu_items_for_message(inline_keyboard_menu_items: InlineKeyboardMarkup | str,
                                                  user_id: int) -> Optional[str]:
     try:
         if isinstance(inline_keyboard_menu_items, str):
@@ -119,7 +120,7 @@ def callback_handler(callback: CallbackQuery) -> None:
 def callback_handler(callback: CallbackQuery) -> None:
     item_data_from_callback = get_item_data_from_callback(callback)
     if isinstance(item_data_from_callback, str):
-        message = item_data_from_callback #error
+        message = item_data_from_callback  # error
         logger.exception(message)
     else:
         item_id, telegram_id, item, mktplace_item_id = item_data_from_callback
@@ -177,17 +178,20 @@ def callback_handler(callback: CallbackQuery) -> None:
 def main_handler(message: Message) -> None:
     telegram_id = message.from_user.id
     user = pr.check_user_register_bot(telegram_id)
-    if user:
-        bot.send_message(message.chat.id, f'Имя Вашего профиля: {user.username}.\nВыберите пункт меню.',
-                         reply_markup=keyboard)
-    else:
-        bot.send_message(message.chat.id, 'Ваш телеграм не привязан к профилю сайта! Введите имя профиля:')
-        bot.register_next_step_handler(message, binding_site_user_tgbot)
+    try:
+        if user:
+            bot.send_message(message.chat.id, f'Имя Вашего профиля: {user.username}.\nВыберите пункт меню.',
+                             reply_markup=keyboard)
+        else:
+            bot.send_message(message.chat.id, 'Ваш телеграм не привязан к профилю сайта! Введите имя профиля:')
+            bot.register_next_step_handler(message, binding_site_user_tgbot)
+    except Exception:
+        logger.exception('Ошибка при отправке стартового сообщения через tg-бота')
 
 
 def binding_site_user_tgbot(message: Message) -> None:
     user = pr.search_user_by_username(message.text)
-    if user:
+    if isinstance(user, QuerySet):
         pr.create_user_tgbot(user_id=user.id, telegram_id=message.from_user.id)
         bot.send_message(message.chat.id,
                          f'Теперь Ваш телеграм привязан к профилю сайта! Имя профиля: {user.username}',
@@ -198,20 +202,30 @@ def binding_site_user_tgbot(message: Message) -> None:
         bot.register_next_step_handler(message, binding_site_user_tgbot)
 
 
-def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items) -> None:
+def price_change_message(telegram_id: int, last_price: int, actual_price: int, item: Items) -> Optional[str]:
     name_item = item.name_for_user if item.name_for_user else item.name
-    bot.send_message(telegram_id,
-                     f'<b>Цена на товар "{name_item}" изменилась:</b>\n\n'
-                     f'старая цена: {last_price}\n'
-                     f'новая цена: {actual_price}\n\n'
-                     f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
+    try:
+        bot.send_message(telegram_id,
+                         f'<b>Цена на товар "{name_item}" изменилась:</b>\n\n'
+                         f'старая цена: {last_price}\n'
+                         f'новая цена: {actual_price}\n\n'
+                         f'<a href="{item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
+    except Exception:
+        err_msg = 'Не удалось отправить сообщение об изменении цены товара'
+        logger.exception(err_msg)
+        return err_msg
 
 
-def price_change_message_item_out(telegram_id: int, last_price: int, item: Items) -> None:
+def price_change_message_item_out(telegram_id: int, last_price: int, item: Items) -> Optional[str]:
     name_item = item.name_for_user if item.name_for_user else item.name
-    bot.send_message(telegram_id,
-                     f'<b>Товар {name_item} закончился.</b>\n\n'
-                     f'Последняя  цена: {last_price}', parse_mode='HTML')
+    try:
+        bot.send_message(telegram_id,
+                         f'<b>Товар {name_item} закончился.</b>\n\n'
+                         f'Последняя  цена: {last_price}', parse_mode='HTML')
+    except Exception:
+        err_msg = 'Не удалось отправить сообщение о том, что товар закончился'
+        logger.exception(err_msg)
+        return err_msg
 
 
 def add_item_message(telegram_id: int, created_item: Items) -> Optional[str]:
@@ -222,7 +236,7 @@ def add_item_message(telegram_id: int, created_item: Items) -> Optional[str]:
                          f'Стоимость: {created_item.price}\n'
                          f'<a href="{created_item.item_url}">Посмотреть товар на маркетплейсе</a>', parse_mode='HTML')
     except Exception:
-        err_msg = f'Не уддалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,' \
+        err_msg = f'Не удалось отправить сообщение в tg (id = {telegram_id} о создании нового товара,' \
                   f'наименование: {name_item}'
         logger.exception(err_msg)
         return err_msg

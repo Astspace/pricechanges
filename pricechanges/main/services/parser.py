@@ -129,9 +129,9 @@ class ItemParserOzon(ItemParserBase):
             brand = item_page_soup.find('div', {'data-widget': 'breadCrumbs'}) \
                 .find_all('span')[-1] \
                 .text.strip()
+            return brand
         except Exception:
             return 'Бренд не определен.'
-        return brand
 
     @classmethod
     def __get_item_name(cls, item_page_soup: BeautifulSoup) -> str:
@@ -139,9 +139,9 @@ class ItemParserOzon(ItemParserBase):
             name = item_page_soup.find_all('div', {'data-widget': 'webStickyColumn'})[1] \
                 .find('h1') \
                 .text.strip()
+            return name
         except Exception:
             return 'Наименование не определено'
-        return name
 
     @classmethod
     def __get_item_rating(cls, item_page_soup: BeautifulSoup) -> float:
@@ -150,9 +150,9 @@ class ItemParserOzon(ItemParserBase):
                            .find('svg') \
                            .find_next('div') \
                            .text.split()[0])
+            return rating
         except Exception:
             return -1
-        return rating
 
     @classmethod
     def __get_item_feedbacks(cls, item_page_soup: BeautifulSoup) -> int:
@@ -161,9 +161,9 @@ class ItemParserOzon(ItemParserBase):
                             .find('svg') \
                             .find_next('div') \
                             .text.split()[2])
+            return feedbacks
         except Exception:
             return -1
-        return feedbacks
 
     @classmethod
     def __get_item_volume(cls, item_page_soup: BeautifulSoup) -> int:
@@ -172,12 +172,11 @@ class ItemParserOzon(ItemParserBase):
                 .find_next('span') \
                 .find_next('span') \
                 .text.strip()
+            if len(volume.split()) > 1:
+                return -1
+            return int(volume)
         except Exception:
             return -1
-        if len(volume.split()) > 1:
-            return -1
-        else:
-            return int(volume)
 
     @classmethod
     def __get_item_price(cls, item_page_soup: BeautifulSoup) -> int:
@@ -186,9 +185,9 @@ class ItemParserOzon(ItemParserBase):
                         .find_next('div', {'data-widget': 'webPrice'}) \
                         .find_next('span', {'style': None}) \
                         .text.strip().replace(u'\u2009', '')[:-1]
+            return int(price)
         except Exception:
             return -1
-        return int(price)
 
     def __get_item_dict(self, item_page_soup: BeautifulSoup, id_item: int) -> dict | str:
         try:

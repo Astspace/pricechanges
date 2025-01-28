@@ -1,5 +1,3 @@
-from typing import List, Any
-
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from io import BytesIO

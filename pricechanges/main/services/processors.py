@@ -11,7 +11,6 @@ from django.contrib.auth import get_user_model
 import time
 from typing import Literal, Optional
 
-
 User = get_user_model()
 
 
@@ -47,10 +46,7 @@ def __get_refresh_data_for_create_item(data_for_create_item: Items, item_obj: It
 
 @logger.catch
 def __check_price_changes(item_price_database: int, item_price_parse: int) -> bool:
-    if item_price_database == item_price_parse:
-        return True
-    else:
-        return False
+    return False if item_price_database == item_price_parse else True
 
 
 def __update_item_price_database(item_db: Items, parse_item: Item) -> Optional[str]:
@@ -96,20 +92,24 @@ def __update_item_for_schedule(item: Items) -> Item | str:
     if isinstance(parse_item, str):
         return parse_item
     item_name = item.name_for_user if item.name_for_user else item.name
-    if not __check_price_changes(item.last_price, parse_item.price):
+    if __check_price_changes(item.last_price, parse_item.price):
         res_update = __update_item_price_database(item_db=item, parse_item=parse_item)
-        if isinstance(res_update, str):
+        if res_update:
             return res_update
         last_price_tgbot = item.last_price
         item.last_price = parse_item.price
         if parse_item.name == 'Наименование не определено' and \
                 -1 in (parse_item.feedbacks, parse_item.price, parse_item.rating, parse_item.volume):
             item.out = True
-            send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
+            msg = send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot, item_out=True)
+            if msg:
+                return msg
             create_change_item_logs(mode='out', item_name=item_name, actual_price=last_price_tgbot)
         else:
             item.out = False
-            send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
+            msg = send_price_change_message(item=item, parse_item=parse_item, last_price=last_price_tgbot)
+            if msg:
+                return msg
             create_change_item_logs(mode='change', item_name=item_name, actual_price=item.last_price,
                                     last_price=last_price_tgbot)
         try:
@@ -129,25 +129,21 @@ def send_price_change_message(item: Items, parse_item, last_price: int, item_out
         return telegram_id
     if item_out:
         from main.management.commands.runbot import price_change_message_item_out
-        try:
-            price_change_message_item_out(telegram_id=telegram_id,
-                                          last_price=last_price,
-                                          item=item)
-        except Exception:
-            err_msg = 'Не удалось отправить сообщение через tg-бота о том, что товар закончился'
-            logger.exception(err_msg)
-            return err_msg
+        msg = price_change_message_item_out(telegram_id=telegram_id,
+                                            last_price=last_price,
+                                            item=item)
+        if msg:
+            logger.exception(msg)
+            return msg
     else:
         from main.management.commands.runbot import price_change_message
-        try:
-            price_change_message(telegram_id=telegram_id,
-                                 last_price=last_price,
-                                 actual_price=parse_item.price,
-                                 item=item)
-        except Exception:
-            err_msg = 'Не удалось отправить сообщение через tg-бота об изменении цены товара'
-            logger.exception(err_msg)
-            return err_msg
+        msg = price_change_message(telegram_id=telegram_id,
+                                   last_price=last_price,
+                                   actual_price=parse_item.price,
+                                   item=item)
+        if msg:
+            logger.exception(msg)
+            return msg
 
 
 def send_add_item_message(created_item: Items) -> Optional[str]:
@@ -155,9 +151,7 @@ def send_add_item_message(created_item: Items) -> Optional[str]:
     if isinstance(telegram_id, str):
         return telegram_id
     from main.management.commands.runbot import add_item_message
-    res_msg = add_item_message(telegram_id, created_item)
-    if isinstance(res_msg, str):
-        return res_msg
+    return add_item_message(telegram_id, created_item)
 
 
 def change_item_price_database() -> Optional[str]:
@@ -185,7 +179,7 @@ def get_list_item_history(item_relations: int) -> QuerySet | str:
         return err_msg
 
 
-def get_image_graph_price_changes(list_history: QuerySet) -> str:
+def get_image_graph_price_changes(list_history: QuerySet) -> list[str] | str:
     if not isinstance(list_history, QuerySet):
         err_msg = 'Ошибка получения данных об истории изменения товара'
         logger.exception(err_msg)
@@ -194,7 +188,7 @@ def get_image_graph_price_changes(list_history: QuerySet) -> str:
     return graph_item_history
 
 
-def get_image_graph_actual_price(list_history: list) -> str:
+def get_image_graph_actual_price(list_history: list) -> list[str] | str:
     if isinstance(list_history, str):
         logger.exception(list_history)
         return list_history
@@ -202,35 +196,21 @@ def get_image_graph_actual_price(list_history: list) -> str:
     return graph_actual_price
 
 
-def check_user_register_bot(telegram_id: int) -> QuerySet | str:
+def check_user_register_bot(telegram_id: int) -> Optional[str]:
     try:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
         user = User.objects.get(id=user_id)
         return user
-    except Profile.DoesNotExist:
-        err_msg = 'Возникла ошибка при попытке определить id пользователя по tg-id.'
-        logger.exception(err_msg)
-        return err_msg
-    except User.DoesNotExist:
-        err_msg = 'Возникла ошибка при попытке определить пользователя по его id.'
-        logger.exception(err_msg)
-        return err_msg
     except Exception:
-        err_msg = 'Возникла ошибка при попытке определить пользователя.'
-        logger.exception(err_msg)
-        return err_msg
+        logger.exception('Возникла ошибка при попытке определить профиль пользователя по tg-аккаунту.')
 
 
 def search_user_by_username(username: str) -> QuerySet | bool:
     try:
         user = User.objects.get(username=username)
         return user
-    except User.DoesNotExist:
-        err_msg = 'Ошибка при попытке получить пользователя по его юзернейму'
-        logger.exception(err_msg)
-        return err_msg
     except Exception:
-        err_msg = 'Ошибка при попытке получить пользователя.'
+        err_msg = 'Ошибка при попытке получить профиль пользователя.'
         logger.exception(err_msg)
         return err_msg
 
@@ -258,10 +238,6 @@ def check_availability_bot(item: Items) -> int | str:
     try:
         profile = Profile.objects.get(user_relations_id=user_id)
         return profile.telegram_id
-    except Profile.DoesNotExist:
-        err_msg = 'Не удалось найти профиль пользователя по товару'
-        logger.exception(err_msg)
-        return err_msg
     except Exception:
         err_msg = 'Ошибка при попытке получить id tg-профиля'
         logger.exception(err_msg)
@@ -273,37 +249,28 @@ def get_item_list_tgbot(telegram_id: int) -> QuerySet | str:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
         items_list = Items.actual.filter(owner=user_id)
         return items_list
-    except Profile.DoesNotExist:
-        err_msg = 'Не удалось определить id пользователя по его tg-id.'
-        logger.exception(err_msg)
-        return err_msg
     except Exception:
-        err_msg = 'Не удалось получить список товаров пользователя по его tg-id.'
+        err_msg = 'Не удалось получить список товаров пользователя по данным tg.'
         logger.exception(err_msg)
         return err_msg
 
 
-def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id: int) -> str | bool:
+def get_image_graph_actual_price_tgbot(mktplace_item_id: int, telegram_id: int) -> str | list[str]:
     list_history = get_list_history_item_tgbot(mktplace_item_id, telegram_id)
-    if list_history:
-        user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
-        user_name = User.objects.get(id=user_id).username
-        graph_actual_price = GraphActualPrice(list_history).save_image_graph_actual_prices_tgbot(user_name=user_name)
-        return graph_actual_price
-    else:
-        return False
+    if isinstance(list_history, str):
+        return [list_history]
+    user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
+    user_name = User.objects.get(id=user_id).username
+    graph_actual_price = GraphActualPrice(list_history).save_image_graph_actual_prices_tgbot(user_name=user_name)
+    return graph_actual_price
 
 
 def get_list_history_item_tgbot(mktplace_item_id: int, telegram_id) -> QuerySet | str:
     try:
         user_id = Profile.objects.get(telegram_id=telegram_id).user_relations_id
         item = Items.actual.get(id_item=mktplace_item_id, owner=user_id)
-    except Profile.DoesNotExist:
-        err_msg = 'Не удалось определить id пользователя по его tg-id.'
-        logger.exception(err_msg)
-        return err_msg
     except Exception:
-        err_msg = 'Не удалось получить товар пользователя по id товара с маркетплейса.'
+        err_msg = 'Не удалось получить данные о товаре пользователя.'
         logger.exception(err_msg)
         return err_msg
     item_history = get_list_item_history(item_relations=item.id)
