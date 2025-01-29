@@ -66,10 +66,10 @@ class GraphPriceChanges(GraphBase):
         plt.xticks(rotation=45)
         return plt
 
-    def generate_image_graph_price_changes(self) -> list[str] | str:
+    def generate_image_graph_price_changes(self) -> str:
         plot_graph_price_changes = self.__generate_plot_graph_price_changes()
         if isinstance(plot_graph_price_changes, str):
-            return [plot_graph_price_changes]
+            return plot_graph_price_changes
         image_graph = self.generate_image_graph(plot_graph_price_changes)
         return image_graph
 
@@ -108,7 +108,7 @@ class GraphActualPrice(GraphBase):
         plt.ylabel('Цена')
         return plt
 
-    def generate_image_graph_actual_prices(self) -> list[str] | str:
+    def generate_image_graph_actual_prices(self) -> str:
         plot_graph_actual_prices = self.__generate_plot_graph_actual_price()
         if isinstance(plot_graph_actual_prices, str):
             return plot_graph_actual_prices

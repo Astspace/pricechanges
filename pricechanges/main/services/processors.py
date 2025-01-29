@@ -179,7 +179,7 @@ def get_list_item_history(item_relations: int) -> QuerySet | str:
         return err_msg
 
 
-def get_image_graph_price_changes(list_history: QuerySet) -> list[str] | str:
+def get_image_graph_price_changes(list_history: QuerySet) -> str:
     if not isinstance(list_history, QuerySet):
         err_msg = 'Ошибка получения данных об истории изменения товара'
         logger.exception(err_msg)
@@ -188,7 +188,7 @@ def get_image_graph_price_changes(list_history: QuerySet) -> list[str] | str:
     return graph_item_history
 
 
-def get_image_graph_actual_price(list_history: list) -> list[str] | str:
+def get_image_graph_actual_price(list_history: list) -> str:
     if isinstance(list_history, str):
         logger.exception(list_history)
         return list_history

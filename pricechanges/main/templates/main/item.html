@@ -21,7 +21,8 @@
 <h2>{{item.name}}</h2><br>
 {% endif %}
 <hr class="border border-primary border-2 opacity-95">
-{% if history|length > 1 %}
+{% if history.type == 'queryset' %}
+{% if history.data|length > 1 %}
 {% if graph %}
 {{graph}}
 {% endif %}
@@ -42,7 +43,7 @@
     </tr>
   </thead>
   <tbody>
-  {% for i in history %}
+  {% for i in history.data %}
   {% if i.price == -1 %}
     <tr class="table-secondary" style="height: 40px;">
   {% elif i.price < item.price %}
@@ -71,8 +72,15 @@
   <p class="mb-1">Цена на товар не изменилась и составляет {{item.price}} руб.</p>
 </div>
   {% endif %}
+  {% endif %}
+  {% if history.type == 'string' %}
+  <div class="p-3 text-primary-emphasis bg-primary-subtle border border-primary-subtle rounded-3" role="alert">
+  <h4 class="alert-heading">Внимание!</h4>
+  <p>Произошла ошибка! Обратитесь к разработчику.</p>
+  <hr>
+  <p class="mb-1">{{history.data}}</p>
+</div>
+  {% endif %}
   </tbody>
 </table>
-
-
 {% endblock %}
