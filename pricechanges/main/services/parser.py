@@ -105,9 +105,8 @@ class ItemParserOzon(ItemParserBase):
         except Exception:
             err_msg = 'Ошибка при попытке взаимодействия с главной страницей Ozon.'
             logger.exception(err_msg)
-            return [err_msg]
-        finally:
             driver.quit()
+            return [err_msg]
         time.sleep(10)
         driver = self.__search_item(driver, id_item)
         if isinstance(driver, str):

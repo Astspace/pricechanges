@@ -83,7 +83,7 @@ class AddItem(LoginRequiredMixin, DataMixin, CreateView):
         data_for_create_item.owner = self.request.user
         data_for_create_item = processors.preparation_data_for_create_item(data_for_create_item)
         if isinstance(data_for_create_item, str):
-            return render(self.request, 'maim/add_item_error.html', {'error_msg': data_for_create_item})
+            return render(self.request, 'main/add_item_error.html', {'error_msg': data_for_create_item})
         try:
             data_for_create_item.save()
         except Exception:

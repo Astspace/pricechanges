@@ -1,6 +1,5 @@
 from loguru import logger
 import os
-import sys
 
 
 log_path = 'main/logs/errors.txt'
@@ -10,4 +9,4 @@ if not os.path.exists(log_path):
         pass
 
 logger.add(log_path, format='{time} | {level} | {message} || Модуль: {file}, строка: {line}', level='ERROR')
-logger.add(sys.stderr, format='{time} | {level} | {message} || Модуль: {file}, строка: {line}', level='DEBUG')
+#logger.add(sys.stderr, format='{time} | {level} | {message} || Модуль: {file}, строка: {line}', level='DEBUG')
