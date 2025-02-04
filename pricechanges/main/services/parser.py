@@ -44,15 +44,19 @@ class ItemParserWb(ItemParserBase):
 
     def __get_item_dict(self, response_json: dict) -> str | Item:
         try:
+            try:
+                price = response_json["sizes"][0]["price"]["product"]
+            except Exception:
+                price = -1
             item_data_dict = {
                 "id": response_json["id"],
                 "brand": response_json["brand"],
                 "name": response_json["name"],
                 "rating": response_json["reviewRating"],
                 "feedbacks": response_json["feedbacks"],
-                "volume": response_json["volume"],
-                "price": response_json["sizes"][0]["price"]["product"],
-                "last_price": response_json["sizes"][0]["price"]["product"],
+                "volume": response_json["totalQuantity"],
+                "price": price,
+                "last_price": price,
                 "item_url": f"https://www.wildberries.ru/catalog/{self.id_item}/detail.aspx",
                 "marketplace": 'wb'
             }

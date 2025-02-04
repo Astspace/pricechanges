@@ -15,6 +15,12 @@ class Item(BaseModel):
 
     @model_validator(mode='after')
     def convert_price(self) -> Self:
+        if self.marketplace == 'wb' and self.volume == 0 and self.price == -1:
+            self.name = 'Наименование не определено'
+            self.rating = -1
+            self.feedbacks = -1
+            self.volume = -1
+            return self
         if self.price is not None and self.marketplace == 'wb':
             self.price = int(self.price / 98)
             return self

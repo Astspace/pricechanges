@@ -77,7 +77,7 @@ class GraphPriceChanges(GraphBase):
 class GraphActualPrice(GraphBase):
     def __init__(self, item_history: QuerySet):
         self.item_history = item_history.filter(price__gt=-1)
-        self.actual_price = item_history.last().price
+        self.actual_price = item_history.first().price
         self.min_price = self.item_history.order_by('price').first().price
         self.max_price = self.item_history.order_by('price').last().price
 
@@ -97,14 +97,14 @@ class GraphActualPrice(GraphBase):
 
     @logger.catch
     def __display_graph_actual_price(self) -> None:
+        self.ax.text(0, self.min_price/2, f'Min: {self.min_price}',
+                 ha='center', va='bottom', color='black', fontsize=10)
+        self.ax.text(1, self.actual_price/2, f'{self.actual_price if self.actual_price != -1 else 'товар закончился'}',
+                 ha='center', va='bottom', color='black', fontsize=10)
+        self.ax.text(2, self.max_price/2, f'Max: {self.max_price}',
+                 ha='center', va='bottom', color='black', fontsize=10)
         self.ax.axhline(y=self.max_price, color='red', linestyle='dashed', label='Максимальное значение')
         self.ax.axhline(y=self.min_price, color='blue', linestyle='dashed', label='Минимальное значение')
-        self.ax.text(0, self.min_price, f'Min: {self.min_price}',
-                 ha='center', va='bottom', color='blue', fontsize=10)
-        self.ax.text(1, self.actual_price, f'{self.actual_price if self.actual_price != -1 else 'товар закончился'}',
-                 ha='center', va='bottom', color='black', fontsize=10)
-        self.ax.text(2, self.max_price, f'Max: {self.max_price}',
-                 ha='center', va='bottom', color='red', fontsize=10)
         self.ax.set_ylabel('Цена')
         self.fig.tight_layout()
 

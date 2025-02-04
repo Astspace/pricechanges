@@ -131,10 +131,11 @@ def callback_handler(callback: CallbackQuery) -> None:
         else:
             table_data = [[i.time_create.date(), i.price] for i in item_history]
             preformatted_table = generate_table_text(table_data)
-            if isinstance(preformatted_table, list):
+            message = preformatted_table
+            if isinstance(message, list):
                 message = str(preformatted_table[0])
-            bot.send_message(callback.message.chat.id, message,
-                             reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
+        bot.send_message(callback.message.chat.id, message,
+                         reply_markup=generate_inline_keyboard_data_item(item.id), parse_mode='Markdown')
 
 
 def generate_table_text(table_data: list) -> list[str] | str:
@@ -155,7 +156,7 @@ def generate_table_text(table_data: list) -> list[str] | str:
 
 def get_item_data_from_callback(callback: CallbackQuery) -> tuple | str:
     try:
-        item_id = callback.data.split('^')[1]
+        item_id = int(callback.data.split('^')[1])
         telegram_id = callback.from_user.id
         item = pr.get_item_data(item_id)
         mktplace_item_id = item.id_item
